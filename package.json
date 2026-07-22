@@ -1,0 +1,28 @@
+{
+  "name": "peercode-root",
+  "private": true,
+  "description": "Real-time collaborative code editor with local AI-powered peer review",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:ai": "cd apps/ai-service && uvicorn app.main:app --reload --port 8000",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "docker:up": "docker compose -f docker/docker-compose.yml up -d",
+    "docker:down": "docker compose -f docker/docker-compose.yml down"
+  },
+  "keywords": [
+    "crdt",
+    "yjs",
+    "monaco-editor",
+    "ai-peer-review",
+    "ollama",
+    "realtime-collaboration"
+  ],
+  "author": "",
+  "license": "MIT"
+}
