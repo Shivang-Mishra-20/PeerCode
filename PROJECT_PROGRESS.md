@@ -3,8 +3,8 @@
 ## Summary
 
 - **Project Name**: PeerCode
-- **Status**: Milestone 1 in Progress (Monorepo Workspaces & Infrastructure Foundation)
-- **Current Milestone**: Milestone 1 - Core Monorepo Setup & Infrastructure Setup
+- **Status**: Milestone 1 Completed (Core Monorepo Setup & Infrastructure Setup)
+- **Current Milestone**: Milestone 2 - Backend REST API & Database Schema Implementation
 
 ---
 
@@ -20,15 +20,19 @@
 - [x] Written engineering conventions (`docs/CONVENTIONS.md`) and system architecture reference (`docs/ARCHITECTURE.md`).
 - [x] Created root project README and repository foundation.
 
+### Milestone 1: Core Monorepo Setup & Infrastructure Setup
+
+- [x] **Session 1**: Configured root & package-level TypeScript build settings (`tsconfig.base.json`, workspace `tsconfig.json` files), linked `@peercode/shared` workspace dependency, setup ESLint & Prettier.
+- [x] **Session 2**: Implemented Express HTTP server (`apps/backend/src/index.ts`) with `/health` route & FastAPI microservice (`apps/ai-service/app/main.py`) with `/health` route, initialized base Prisma ORM schema (`schema.prisma`), and verified build/lint status across workspaces.
+
 ---
 
 ## Current Milestone
 
-### Milestone 1: Core Monorepo Setup & Infrastructure Setup
+### Milestone 2: Backend REST API & Database Schema Implementation
 
-- [x] **Session 1**: Configured root & package-level TypeScript build settings (`tsconfig.base.json`, workspace `tsconfig.json` files), linked `@peercode/shared` workspace dependency, and verified TypeScript compilation output.
-- [ ] **Session 2**: Implement Express server entrypoint with `/health` route & FastAPI microservice entrypoint with `/health` route.
-- [ ] **Session 3**: Set up Prisma ORM & Docker infrastructure verification.
+- [ ] Implement Prisma schema persistence models (`User`, `Room`, `RoomSession`, `AIReview`).
+- [ ] Build Express REST API routes for room lifecycle management.
 
 ---
 
