@@ -28,17 +28,20 @@ flowchart TD
 ## Key Subsystems
 
 ### 1. Frontend Client (`apps/frontend`)
+
 - **UI Framework**: React 18 with Vite, TypeScript, and Tailwind CSS.
 - **Code Editor**: Monaco Editor (VS Code core engine).
 - **CRDT Layer**: `yjs` + `y-monaco` + `y-websocket` for lock-free multi-user document state convergence and live cursor awareness.
 
 ### 2. Primary Backend (`apps/backend`)
+
 - **Runtime**: Node.js with Express and TypeScript.
 - **WebSocket Gateway**: Manages real-time room sessions, relays CRDT delta updates across connected peers, and publishes state events to Redis.
 - **Persistence**: PostgreSQL via Prisma ORM for room configurations, snapshot history, and past AI review records.
 - **State Buffer**: Redis for pub/sub messaging across WS nodes and fast transient session state storage.
 
 ### 3. AI Peer Review Microservice (`apps/ai-service`)
+
 - **Runtime**: Python 3.11 with FastAPI and Pydantic.
 - **Model Engine**: Local Ollama instance serving `Qwen2.5-Coder:7b`.
 - **Structured Output**: Strict JSON enforcement for line-level suggestions (`bug`, `smell`, `inefficiency`, `unused`).
@@ -62,7 +65,7 @@ sequenceDiagram
     User1->>WS: Yjs Document Update (Binary Delta)
     WS->>User2: Broadcast Delta Update
     WS->>Redis: Buffer Delta & Update Awareness State
-    
+
     Note over WS: Debounce Timer (3s idle)
     WS->>AI: POST /api/v1/review (Code Snapshot + Language)
     AI->>Ollama: Prompt (Qwen2.5-Coder 7B, JSON format)

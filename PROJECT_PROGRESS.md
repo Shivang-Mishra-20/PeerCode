@@ -1,15 +1,17 @@
 # Project Progress & Roadmap
 
 ## Summary
+
 - **Project Name**: PeerCode
-- **Status**: Milestone 0 Completed (Planning & Foundation)
-- **Current Milestone**: Milestone 0 - Project Planning & Architectural Foundation
+- **Status**: Milestone 1 in Progress (Monorepo Workspaces & Infrastructure Foundation)
+- **Current Milestone**: Milestone 1 - Core Monorepo Setup & Infrastructure Setup
 
 ---
 
 ## Completed Milestones
 
 ### Milestone 0: Project Planning & Architectural Foundation
+
 - [x] Defined system architecture and data flow sequence with Mermaid diagrams.
 - [x] Established monorepo layout (`apps/frontend`, `apps/backend`, `apps/ai-service`, `packages/shared`).
 - [x] Configured root `package.json` with npm workspace declarations.
@@ -22,37 +24,48 @@
 
 ## Current Milestone
 
-### Milestone 0: Completion Verification
-- [x] Final review of project skeleton, documentation, and Git repository setup.
+### Milestone 1: Core Monorepo Setup & Infrastructure Setup
+
+- [x] **Session 1**: Configured root & package-level TypeScript build settings (`tsconfig.base.json`, workspace `tsconfig.json` files), linked `@peercode/shared` workspace dependency, and verified TypeScript compilation output.
+- [ ] **Session 2**: Implement Express server entrypoint with `/health` route & FastAPI microservice entrypoint with `/health` route.
+- [ ] **Session 3**: Set up Prisma ORM & Docker infrastructure verification.
 
 ---
 
 ## Upcoming Milestones
 
 ### Milestone 1: Core Monorepo Setup & Infrastructure Setup
+
 - Scope: Initializing workspace package dependencies, setting up Prisma ORM base schemas in backend, FastAPI health check in Python microservice, and verifying Docker infrastructure.
 
 ### Milestone 2: Backend REST API & Database Schema Implementation
+
 - Scope: User, Room, Session, and AIReview persistence models in PostgreSQL; Express API routing for room lifecycle management.
 
 ### Milestone 3: Real-Time CRDT Collaboration & Monaco Engine
+
 - Scope: React SPA setup with Monaco Editor, Yjs CRDT WebSocket binding, and multi-user cursor awareness.
 
 ### Milestone 4: Room Session Persistence & Redis Integration
+
 - Scope: Redis session store, periodic Yjs update snapshotting to PostgreSQL, and room session restoration.
 
 ### Milestone 5: FastAPI AI Microservice & Ollama Pipeline
+
 - Scope: Python service with Ollama `qwen2.5-coder:7b` integration, Pydantic response parsing, and background task queueing.
 
 ### Milestone 6: AI Peer Review UI & Monaco Markers
+
 - Scope: End-to-end integration of AI suggestions into Monaco inline markers, highlights, and history panel.
 
 ### Milestone 7: Final Polishing, Comprehensive Verification & Documentation
+
 - Scope: E2E testing, final README updates, screenshots, and interview readiness audit.
 
 ---
 
 ## Pending Work
+
 - Initial package dependency installation across workspaces.
 - Prisma schema definition for room persistence.
 - WebSocket server implementation in backend.
@@ -60,11 +73,13 @@
 ---
 
 ## Known Issues
+
 - None at present.
 
 ---
 
 ## Technical Debt
+
 - None at present.
 
 ---

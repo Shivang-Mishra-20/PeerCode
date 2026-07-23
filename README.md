@@ -19,14 +19,14 @@ PeerCode is an open-source collaborative code editor designed for real-time pair
 
 ## Tech Stack
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 18, TypeScript, Monaco Editor, Tailwind CSS, React Router |
-| **Realtime Engine** | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`) |
-| **Backend API** | Node.js, Express, TypeScript, Prisma ORM |
-| **Database & Cache** | PostgreSQL 16, Redis 7 |
-| **AI Microservice** | Python 3.11, FastAPI, Pydantic, Ollama (`Qwen2.5-Coder:7b`) |
-| **Infrastructure** | Docker Compose |
+| Layer                | Technologies                                                    |
+| :------------------- | :-------------------------------------------------------------- |
+| **Frontend**         | React 18, TypeScript, Monaco Editor, Tailwind CSS, React Router |
+| **Realtime Engine**  | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`)              |
+| **Backend API**      | Node.js, Express, TypeScript, Prisma ORM                        |
+| **Database & Cache** | PostgreSQL 16, Redis 7                                          |
+| **AI Microservice**  | Python 3.11, FastAPI, Pydantic, Ollama (`Qwen2.5-Coder:7b`)     |
+| **Infrastructure**   | Docker Compose                                                  |
 
 ---
 
@@ -65,12 +65,14 @@ PeerCode/
 ## Local Setup
 
 ### Prerequisites
+
 - Node.js >= 18.x and `npm`
 - Python >= 3.10
 - Docker & Docker Compose
 - [Ollama](https://ollama.ai/) installed locally with `qwen2.5-coder:7b` pulled (`ollama pull qwen2.5-coder:7b`)
 
 ### 1. Repository Setup
+
 ```bash
 git clone https://github.com/Shivang-Mishra-20/PeerCode.git
 cd PeerCode
@@ -78,12 +80,15 @@ npm install
 ```
 
 ### 2. Start Infrastructure (PostgreSQL & Redis)
+
 ```bash
 npm run docker:up
 ```
 
 ### 3. Configure Environment Variables
+
 Copy `.env.example` templates in root, `apps/backend/`, and `apps/ai-service/`:
+
 ```bash
 cp .env.example .env
 cp apps/backend/.env.example apps/backend/.env

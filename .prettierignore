@@ -1,0 +1,27 @@
+# Dependency directories
+node_modules/
+.pnp
+.pnp.js
+
+# Build and distribution outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Python / Virtual Environment
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment files
+.env
+.env.*
+
+# Package lock
+package-lock.json
+
+# IDEs
+.vscode/
+.idea/
