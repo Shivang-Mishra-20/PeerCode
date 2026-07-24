@@ -8,3 +8,43 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Room {
+  id        String   @id @default(cuid())
+  name      String?
+  language  String   @default("javascript")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  snapshots CodeSnapshot[]
+  reviews   AIReview[]
+
+  @@map("rooms")
+}
+
+model CodeSnapshot {
+  id        String   @id @default(cuid())
+  roomId    String
+  content   String   @db.Text
+  language  String
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@map("code_snapshots")
+}
+
+model AIReview {
+  id          String   @id @default(cuid())
+  roomId      String
+  language    String
+  suggestions Json
+  model       String?
+  createdAt   DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+  @@map("ai_reviews")
+}
