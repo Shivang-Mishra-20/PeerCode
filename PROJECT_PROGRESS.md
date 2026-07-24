@@ -3,7 +3,7 @@
 ## Summary
 
 - **Project Name**: PeerCode
-- **Status**: Milestone 2 Completed (Backend REST API & Database Schema Implementation)
+- **Status**: Milestone 3 in Progress (Real-Time CRDT Collaboration & Monaco Engine)
 - **Current Milestone**: Milestone 3 - Real-Time CRDT Collaboration & Monaco Engine
 
 ---
@@ -36,8 +36,9 @@
 
 ### Milestone 3: Real-Time CRDT Collaboration & Monaco Engine
 
-- [ ] React + Vite SPA frontend setup with Monaco Editor integration.
-- [ ] Yjs CRDT WebSocket collaboration gateway and multi-user cursor awareness (`y-monaco`, `y-websocket`).
+- [x] **Session 1**: Configured React 18, Vite, Tailwind CSS, global styles (`index.css`), React Router (`/`, `/room/:roomId`), and functional page scaffolds (`Home.tsx`, `Room.tsx`).
+- [ ] **Session 2**: Monaco Editor component integration (`CodeEditor.tsx`) and language selection controls.
+- [ ] **Session 3**: Yjs CRDT WebSocket collaboration gateway and multi-user cursor awareness (`y-monaco`, `y-websocket`).
 
 ---
 
