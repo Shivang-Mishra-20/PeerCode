@@ -44,6 +44,11 @@ export interface RoomResponse {
   updatedAt: string;
 }
 
+export interface SaveSnapshotPayload {
+  content: string;
+  language?: SupportedLanguage;
+}
+
 export interface CodeSnapshotDTO {
   id: string;
   roomId: string;

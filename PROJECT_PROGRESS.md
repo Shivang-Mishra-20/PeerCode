@@ -3,8 +3,8 @@
 ## Summary
 
 - **Project Name**: PeerCode
-- **Status**: Milestone 1 Completed (Core Monorepo Setup & Infrastructure Setup)
-- **Current Milestone**: Milestone 2 - Backend REST API & Database Schema Implementation
+- **Status**: Milestone 2 Completed (Backend REST API & Database Schema Implementation)
+- **Current Milestone**: Milestone 3 - Real-Time CRDT Collaboration & Monaco Engine
 
 ---
 
@@ -25,14 +25,19 @@
 - [x] **Session 1**: Configured root & package-level TypeScript build settings (`tsconfig.base.json`, workspace `tsconfig.json` files), linked `@peercode/shared` workspace dependency, setup ESLint & Prettier.
 - [x] **Session 2**: Implemented Express HTTP server (`apps/backend/src/index.ts`) with `/health` route & FastAPI microservice (`apps/ai-service/app/main.py`) with `/health` route, initialized base Prisma ORM schema (`schema.prisma`), and verified build/lint status across workspaces.
 
+### Milestone 2: Backend REST API & Database Schema Implementation
+
+- [x] **Session 1**: Defined Prisma data models (`Room`, `CodeSnapshot`, `AIReview`), created initial PostgreSQL migration (`0_init`), generated Prisma Client, and established database singleton (`src/lib/prisma.ts`).
+- [x] **Session 2**: Built room service layer (`roomService.ts`) and Express REST controllers (`POST /api/rooms`, `GET /api/rooms/:id`, `POST /api/rooms/:id/snapshots`, `GET /api/rooms/:id/snapshots/latest`).
+
 ---
 
 ## Current Milestone
 
-### Milestone 2: Backend REST API & Database Schema Implementation
+### Milestone 3: Real-Time CRDT Collaboration & Monaco Engine
 
-- [ ] Implement Prisma schema persistence models (`User`, `Room`, `RoomSession`, `AIReview`).
-- [ ] Build Express REST API routes for room lifecycle management.
+- [ ] React + Vite SPA frontend setup with Monaco Editor integration.
+- [ ] Yjs CRDT WebSocket collaboration gateway and multi-user cursor awareness (`y-monaco`, `y-websocket`).
 
 ---
 
