@@ -10,15 +10,16 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Terminal,
-  Activity,
   Layers,
   ShieldCheck,
   CheckCircle2,
   Sparkle,
   ChevronDown,
   Command,
+  Users,
 } from 'lucide-react';
 import { SupportedLanguage } from '@peercode/shared';
+import { ConnectionStatus, AwarenessUser } from '../../hooks/useYjs';
 import IconButton from '../ui/IconButton';
 import Badge from '../ui/Badge';
 
@@ -29,6 +30,8 @@ export interface AppLayoutProps {
   cursorPosition?: { line: number; column: number };
   activeRoomId?: string;
   showAiPanelDefault?: boolean;
+  connectionStatus?: ConnectionStatus;
+  awarenessUsers?: AwarenessUser[];
 }
 
 const SUPPORTED_LANGUAGES: { id: SupportedLanguage; label: string; ext: string }[] = [
@@ -45,6 +48,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
   cursorPosition = { line: 1, column: 1 },
   activeRoomId,
   showAiPanelDefault = false,
+  connectionStatus = 'connected',
+  awarenessUsers = [],
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [aiPanelOpen, setAiPanelOpen] = useState(showAiPanelDefault);
@@ -65,6 +70,40 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const getStatusBadge = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return (
+          <div className="flex items-center space-x-1.5 text-emerald-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live</span>
+          </div>
+        );
+      case 'connecting':
+        return (
+          <div className="flex items-center space-x-1.5 text-amber-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <span>Connecting...</span>
+          </div>
+        );
+      case 'reconnecting':
+        return (
+          <div className="flex items-center space-x-1.5 text-amber-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>Reconnecting...</span>
+          </div>
+        );
+      case 'disconnected':
+      default:
+        return (
+          <div className="flex items-center space-x-1.5 text-gray-500 font-mono">
+            <span className="w-2 h-2 rounded-full bg-gray-500" />
+            <span>Offline</span>
+          </div>
+        );
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0d1117] text-gray-100 overflow-hidden select-none font-sans">
@@ -107,7 +146,26 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         </div>
 
         {/* Right Header Toolbar Controls */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2.5">
+          {/* Active Collaborator Presences */}
+          {awarenessUsers.length > 0 && (
+            <div className="flex items-center space-x-1.5 pr-1 border-r border-[#30363d]">
+              <Users className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex -space-x-1 overflow-hidden">
+                {awarenessUsers.map((u) => (
+                  <div
+                    key={u.clientId}
+                    title={u.name}
+                    style={{ backgroundColor: u.color }}
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white uppercase border border-[#161b22] ring-1 ring-[#30363d]"
+                  >
+                    {u.name.charAt(0)}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Language Selector Dropdown */}
           <div className="relative">
             <button
@@ -226,7 +284,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-gray-200">Current Session</span>
                         <Badge variant="success" size="sm" dot>
-                          Live
+                          CRDT Sync
                         </Badge>
                       </div>
                       <p className="text-[11px] text-gray-500 font-mono truncate">
@@ -346,10 +404,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       {/* Handcrafted Compact Desktop Status Bar */}
       <footer className="h-5 min-h-[20px] bg-[#161b22] border-t border-[#30363d] px-2.5 flex items-center justify-between text-[10px] font-mono text-gray-400 select-none z-30">
         <div className="flex items-center space-x-3">
-          <div className="flex items-center space-x-1 text-emerald-400">
-            <Activity className="w-2.5 h-2.5" />
-            <span>Ready</span>
-          </div>
+          {getStatusBadge()}
           <span className="text-[#30363d]">|</span>
           <div className="flex items-center space-x-1 text-gray-300">
             <Terminal className="w-2.5 h-2.5 text-blue-400" />

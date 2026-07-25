@@ -16,7 +16,11 @@
     "monaco-editor": "^0.47.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^6.22.3",
+    "y-monaco": "^0.1.5",
+    "y-protocols": "^1.0.5",
+    "y-websocket": "^1.5.4",
+    "yjs": "^13.6.14"
   },
   "devDependencies": {
     "@types/react": "^18.2.66",

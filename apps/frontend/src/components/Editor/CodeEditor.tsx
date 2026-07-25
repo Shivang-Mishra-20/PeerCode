@@ -1,6 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import type * as monaco from 'monaco-editor';
+import { MonacoBinding } from 'y-monaco';
+import { WebsocketProvider } from 'y-websocket';
+import * as Y from 'yjs';
 import { SupportedLanguage } from '@peercode/shared';
 
 export interface CodeEditorProps {
@@ -9,28 +12,62 @@ export interface CodeEditorProps {
   onChange?: (value: string | undefined) => void;
   onCursorChange?: (line: number, column: number) => void;
   readOnly?: boolean;
+  provider?: WebsocketProvider | null;
+  yText?: Y.Text | null;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
   language = 'javascript',
-  value = '// Welcome to PeerCode\nfunction helloWorld() {\n  console.log("PeerCode IDE Ready");\n}\n\nhelloWorld();\n',
+  value,
   onChange,
   onCursorChange,
   readOnly = false,
+  provider,
+  yText,
 }) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const bindingRef = useRef<MonacoBinding | null>(null);
+  const boundKeyRef = useRef<string | null>(null);
+
+  // Bind Yjs Y.Text to Monaco model using MonacoBinding safely
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && provider && yText && yText.doc) {
+      const model = editor.getModel();
+      const newKey = `${yText.doc.clientID}-${provider.url}`;
+
+      // Only create a new binding if binding key changes or does not exist
+      if (model && boundKeyRef.current !== newKey) {
+        if (bindingRef.current) {
+          bindingRef.current.destroy();
+          bindingRef.current = null;
+        }
+
+        const binding = new MonacoBinding(yText, model, new Set([editor]), provider.awareness);
+        bindingRef.current = binding;
+        boundKeyRef.current = newKey;
+      }
+    }
+
+    return () => {
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+        boundKeyRef.current = null;
+      }
+    };
+  }, [provider, yText]);
 
   const handleEditorDidMount: OnMount = (editor, _monaco) => {
     editorRef.current = editor;
 
-    // Track cursor position for status bar & live cursor awareness
+    // Track cursor position for status bar
     editor.onDidChangeCursorPosition((e) => {
       if (onCursorChange) {
         onCursorChange(e.position.lineNumber, e.position.column);
       }
     });
 
-    // Focus editor on mount
     editor.focus();
   };
 
