@@ -32,17 +32,19 @@
 
 ---
 
-## Current Milestone
+### Milestone 3: Frontend Desktop IDE Shell & Monaco Editor Engine
 
-### Milestone 3: Real-Time CRDT Collaboration & Monaco Engine
-
-- [x] **Session 1**: Configured React 18, Vite, Tailwind CSS, global styles (`index.css`), React Router (`/`, `/room/:roomId`), and functional page scaffolds (`Home.tsx`, `Room.tsx`).
-- [ ] **Session 2**: Monaco Editor component integration (`CodeEditor.tsx`) and language selection controls.
-- [ ] **Session 3**: Yjs CRDT WebSocket collaboration gateway and multi-user cursor awareness (`y-monaco`, `y-websocket`).
+- [x] Built React 18 SPA with Vite build pipeline, Tailwind CSS design system, Framer Motion transitions, custom UI primitives (`Button`, `IconButton`, `Input`, `Card`, `Badge`, `Modal`), desktop IDE 3-pane layout (`AppLayout`), Monaco Editor integration (`CodeEditor.tsx`), active language switcher (`javascript`, `typescript`, `python`, `cpp`), and status bar cursor line/column tracking.
 
 ---
 
-## Upcoming Milestones
+## Current Milestone
+
+### Milestone 4: Real-Time CRDT Collaboration & Yjs WebSockets
+
+- [x] **Session 1**: Built custom Yjs WebSocket gateway (`websocketGateway.ts`), `RoomSession` class abstraction, `RoomSessionManager` singleton, Yjs binary sync protocol handlers (`y-protocols/sync`), 30s ping/pong heartbeat, enhanced `GET /health` diagnostics, and `SIGINT`/`SIGTERM` graceful shutdown.
+- [ ] **Session 2**: Enable Client Yjs Provider (`WebsocketProvider`), `y-monaco` binding, and live cursor awareness.
+- [ ] **Session 3**: Add 10s debounced PostgreSQL snapshot persistence and room hydration.
 
 ### Milestone 1: Core Monorepo Setup & Infrastructure Setup
 
