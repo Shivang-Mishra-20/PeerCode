@@ -13,6 +13,7 @@ export class RoomSession {
   public doc: Y.Doc;
   public awareness: awarenessProtocol.Awareness;
   public clients: Set<WebSocket>;
+  public clientAwarenessIDs: Map<WebSocket, Set<number>>;
   public isDirty: boolean;
   public saveTimeout: NodeJS.Timeout | null = null;
   public destroyTimeout: NodeJS.Timeout | null = null;
@@ -22,6 +23,7 @@ export class RoomSession {
     this.doc = new Y.Doc();
     this.awareness = new awarenessProtocol.Awareness(this.doc);
     this.clients = new Set<WebSocket>();
+    this.clientAwarenessIDs = new Map<WebSocket, Set<number>>();
     this.isDirty = false;
 
     // Seed initial content if provided (e.g. from PostgreSQL snapshot hydration)
@@ -46,14 +48,24 @@ export class RoomSession {
         { added, updated, removed }: { added: number[]; updated: number[]; removed: number[] },
         origin: unknown
       ) => {
+        const ws = origin as WebSocket;
+        if (ws && this.clientAwarenessIDs.has(ws)) {
+          const socketIDs = this.clientAwarenessIDs.get(ws);
+          if (socketIDs) {
+            added.forEach((id: number) => socketIDs.add(id));
+            updated.forEach((id: number) => socketIDs.add(id));
+            removed.forEach((id: number) => socketIDs.delete(id));
+          }
+        }
+
         const changedClients = added.concat(updated, removed);
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
-        encoding.writeUint8Array(
+        encoding.writeVarUint8Array(
           encoder,
           awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
         );
-        this.broadcast(encoding.toUint8Array(encoder), origin as WebSocket);
+        this.broadcast(encoding.toUint8Array(encoder), ws);
       }
     );
   }
@@ -74,6 +86,7 @@ export class RoomSession {
    */
   public addClient(ws: WebSocket): void {
     this.clients.add(ws);
+    this.clientAwarenessIDs.set(ws, new Set<number>());
 
     // Cancel destroy timeout if room was idling
     if (this.destroyTimeout) {
@@ -88,7 +101,7 @@ export class RoomSession {
     if (this.awareness.getStates().size > 0) {
       const encoder = encoding.createEncoder();
       encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
-      encoding.writeUint8Array(
+      encoding.writeVarUint8Array(
         encoder,
         awarenessProtocol.encodeAwarenessUpdate(
           this.awareness,
@@ -100,10 +113,15 @@ export class RoomSession {
   }
 
   /**
-   * Remove a WebSocket client from this room session
+   * Remove a WebSocket client from this room session and clean up awareness
    */
   public removeClient(ws: WebSocket): void {
     this.clients.delete(ws);
+    const clientIDs = this.clientAwarenessIDs.get(ws);
+    if (clientIDs && clientIDs.size > 0) {
+      awarenessProtocol.removeAwarenessStates(this.awareness, Array.from(clientIDs), null);
+    }
+    this.clientAwarenessIDs.delete(ws);
   }
 
   /**
@@ -169,5 +187,6 @@ export class RoomSession {
     this.awareness.destroy();
     this.doc.destroy();
     this.clients.clear();
+    this.clientAwarenessIDs.clear();
   }
 }

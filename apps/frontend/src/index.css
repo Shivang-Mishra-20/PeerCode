@@ -25,3 +25,34 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #484f58;
 }
+
+/* Yjs Monaco Remote Cursor & Selection Highlight Styles */
+.yRemoteSelection {
+  background-color: rgba(47, 129, 247, 0.25);
+}
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid #2f81f7;
+  border-top: 2px solid #2f81f7;
+  height: 100%;
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.yRemoteSelectionHead::after {
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #ffffff;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  line-height: 1.2;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+}

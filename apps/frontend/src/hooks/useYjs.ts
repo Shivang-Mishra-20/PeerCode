@@ -31,6 +31,39 @@ const getRandomColor = (): string => {
   return COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
 };
 
+const injectAwarenessStyles = (
+  states: Map<number, { user?: { name?: string; color?: string } }>
+) => {
+  let styleEl = document.getElementById('yjs-awareness-styles') as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = 'yjs-awareness-styles';
+    document.head.appendChild(styleEl);
+  }
+
+  let css = '';
+  states.forEach((state, clientId) => {
+    if (state.user && state.user.color) {
+      const color = state.user.color;
+      const name = state.user.name || 'Collaborator';
+      css += `
+        .yRemoteSelection-${clientId} {
+          background-color: ${color}33 !important;
+        }
+        .yRemoteSelectionHead-${clientId} {
+          border-color: ${color} !important;
+        }
+        .yRemoteSelectionHead-${clientId}::after {
+          content: '${name}';
+          background-color: ${color} !important;
+        }
+      `;
+    }
+  });
+
+  styleEl.textContent = css;
+};
+
 export const useYjs = ({
   roomId,
   userName = 'Anonymous Dev',
@@ -39,24 +72,22 @@ export const useYjs = ({
 }: UseYjsOptions): UseYjsResult => {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [awarenessUsers, setAwarenessUsers] = useState<AwarenessUser[]>([]);
+  const [instances, setInstances] = useState<{
+    doc: Y.Doc | null;
+    provider: WebsocketProvider | null;
+    yText: Y.Text | null;
+  }>({
+    doc: null,
+    provider: null,
+    yText: null,
+  });
 
-  const yDocRef = useRef<Y.Doc | null>(null);
-  const providerRef = useRef<WebsocketProvider | null>(null);
   const assignedColorRef = useRef<string>(userColor || getRandomColor());
 
+  // Instantiate Y.Doc & WebsocketProvider ONLY when roomId or enabled status changes
   useEffect(() => {
     if (!roomId || !enabled) {
       return;
-    }
-
-    // Idempotent cleanup of any pre-existing instances (React 18 Strict Mode safety)
-    if (providerRef.current) {
-      providerRef.current.destroy();
-      providerRef.current = null;
-    }
-    if (yDocRef.current) {
-      yDocRef.current.destroy();
-      yDocRef.current = null;
     }
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -70,17 +101,10 @@ export const useYjs = ({
       connect: true,
       maxBackoffTime: 10000,
     });
+    const yText = doc.getText('monaco');
 
-    yDocRef.current = doc;
-    providerRef.current = provider;
+    setInstances({ doc, provider, yText });
 
-    // Set local awareness user presence
-    provider.awareness.setLocalStateField('user', {
-      name: userName,
-      color: assignedColorRef.current,
-    });
-
-    // Listen to connection status events accurately
     const handleStatus = (event: { status: 'connecting' | 'connected' | 'disconnected' }) => {
       if (event.status === 'connected') {
         setStatus('connected');
@@ -93,7 +117,6 @@ export const useYjs = ({
 
     provider.on('status', handleStatus);
 
-    // Listen to awareness updates
     const handleAwarenessChange = () => {
       const states = provider.awareness.getStates();
       const users: AwarenessUser[] = [];
@@ -108,31 +131,38 @@ export const useYjs = ({
         }
       });
 
+      injectAwarenessStyles(states);
       setAwarenessUsers(users);
     };
 
     provider.awareness.on('change', handleAwarenessChange);
 
-    // Teardown return function
     return () => {
       provider.off('status', handleStatus);
       provider.awareness.off('change', handleAwarenessChange);
       provider.destroy();
       doc.destroy();
 
-      yDocRef.current = null;
-      providerRef.current = null;
+      setInstances({ doc: null, provider: null, yText: null });
       setStatus('disconnected');
       setAwarenessUsers([]);
     };
-  }, [roomId, enabled, userName]);
+  }, [roomId, enabled]);
 
-  const yText = yDocRef.current ? yDocRef.current.getText('monaco') : null;
+  // Update local awareness presence fields without re-creating provider
+  useEffect(() => {
+    if (instances.provider) {
+      instances.provider.awareness.setLocalStateField('user', {
+        name: userName,
+        color: assignedColorRef.current,
+      });
+    }
+  }, [instances.provider, userName]);
 
   return {
-    yDoc: yDocRef.current,
-    yText,
-    provider: providerRef.current,
+    yDoc: instances.doc,
+    yText: instances.yText,
+    provider: instances.provider,
     status,
     awarenessUsers,
   };

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Editor, { OnMount, OnChange } from '@monaco-editor/react';
 import type * as monaco from 'monaco-editor';
 import { MonacoBinding } from 'y-monaco';
@@ -25,27 +25,23 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   provider,
   yText,
 }) => {
-  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [editor, setEditor] = useState<monaco.editor.IStandaloneCodeEditor | null>(null);
   const bindingRef = useRef<MonacoBinding | null>(null);
-  const boundKeyRef = useRef<string | null>(null);
 
-  // Bind Yjs Y.Text to Monaco model using MonacoBinding safely
+  // Bind Yjs Y.Text to Monaco model using MonacoBinding when editor, provider, and yText are ready
   useEffect(() => {
-    const editor = editorRef.current;
     if (editor && provider && yText && yText.doc) {
       const model = editor.getModel();
-      const newKey = `${yText.doc.clientID}-${provider.url}`;
-
-      // Only create a new binding if binding key changes or does not exist
-      if (model && boundKeyRef.current !== newKey) {
+      if (model) {
+        // Destroy existing binding if any
         if (bindingRef.current) {
           bindingRef.current.destroy();
           bindingRef.current = null;
         }
 
+        // Instantiate new Yjs MonacoBinding
         const binding = new MonacoBinding(yText, model, new Set([editor]), provider.awareness);
         bindingRef.current = binding;
-        boundKeyRef.current = newKey;
       }
     }
 
@@ -53,22 +49,21 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       if (bindingRef.current) {
         bindingRef.current.destroy();
         bindingRef.current = null;
-        boundKeyRef.current = null;
       }
     };
-  }, [provider, yText]);
+  }, [editor, provider, yText]);
 
-  const handleEditorDidMount: OnMount = (editor, _monaco) => {
-    editorRef.current = editor;
+  const handleEditorDidMount: OnMount = (ed, _monaco) => {
+    setEditor(ed);
 
     // Track cursor position for status bar
-    editor.onDidChangeCursorPosition((e) => {
+    ed.onDidChangeCursorPosition((e) => {
       if (onCursorChange) {
         onCursorChange(e.position.lineNumber, e.position.column);
       }
     });
 
-    editor.focus();
+    ed.focus();
   };
 
   const handleEditorChange: OnChange = (val) => {

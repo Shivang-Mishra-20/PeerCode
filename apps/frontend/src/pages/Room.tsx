@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { SupportedLanguage } from '@peercode/shared';
 import AppLayout from '../components/layout/AppLayout';
@@ -15,10 +15,13 @@ export const Room: React.FC = () => {
     column: 1,
   });
 
+  // Ensure stable username per browser session render
+  const userName = useMemo(() => `Developer ${Math.floor(Math.random() * 1000)}`, []);
+
   // Connect to Yjs WebSocket Server using custom hook
   const { yText, provider, status, awarenessUsers } = useYjs({
     roomId: activeRoomId,
-    userName: `Developer ${Math.floor(Math.random() * 100)}`,
+    userName,
   });
 
   return (
