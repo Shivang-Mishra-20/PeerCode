@@ -4,6 +4,8 @@ import * as syncProtocol from 'y-protocols/sync';
 import * as awarenessProtocol from 'y-protocols/awareness';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
+import { roomPersistenceService } from '../services/RoomPersistenceService';
+import { CONFIG } from '../config/constants';
 
 export const MESSAGE_SYNC = 0;
 export const MESSAGE_AWARENESS = 1;
@@ -15,8 +17,8 @@ export class RoomSession {
   public clients: Set<WebSocket>;
   public clientAwarenessIDs: Map<WebSocket, Set<number>>;
   public isDirty: boolean;
-  public saveTimeout: NodeJS.Timeout | null = null;
   public destroyTimeout: NodeJS.Timeout | null = null;
+  public onIdleEvict?: (roomId: string) => void;
 
   constructor(id: string, initialContent?: string) {
     this.id = id;
@@ -26,7 +28,7 @@ export class RoomSession {
     this.clientAwarenessIDs = new Map<WebSocket, Set<number>>();
     this.isDirty = false;
 
-    // Seed initial content if provided (e.g. from PostgreSQL snapshot hydration)
+    // Seed initial content if provided (legacy hydration fallback)
     if (initialContent) {
       const yText = this.doc.getText('monaco');
       yText.insert(0, initialContent);
@@ -34,7 +36,7 @@ export class RoomSession {
 
     // Listen to document update events
     this.doc.on('update', (update: Uint8Array, origin: unknown) => {
-      this.isDirty = true;
+      roomPersistenceService.scheduleDebouncedSave(this);
       const encoder = encoding.createEncoder();
       encoding.writeVarUint(encoder, MESSAGE_SYNC);
       syncProtocol.writeUpdate(encoder, update);
@@ -88,7 +90,7 @@ export class RoomSession {
     this.clients.add(ws);
     this.clientAwarenessIDs.set(ws, new Set<number>());
 
-    // Cancel destroy timeout if room was idling
+    // Cancel idle destroy timeout if room was idling
     if (this.destroyTimeout) {
       clearTimeout(this.destroyTimeout);
       this.destroyTimeout = null;
@@ -122,6 +124,21 @@ export class RoomSession {
       awarenessProtocol.removeAwarenessStates(this.awareness, Array.from(clientIDs), null);
     }
     this.clientAwarenessIDs.delete(ws);
+
+    // If last client disconnected, flush pending save immediately and schedule 60s idle eviction
+    if (this.clients.size === 0) {
+      roomPersistenceService.flushPendingSave(this, 'Flush on disconnect');
+
+      if (this.destroyTimeout) {
+        clearTimeout(this.destroyTimeout);
+      }
+      this.destroyTimeout = setTimeout(() => {
+        console.log(`[Persistence] Room evicted '${this.id}'`);
+        if (this.onIdleEvict) {
+          this.onIdleEvict(this.id);
+        }
+      }, CONFIG.ROOM_IDLE_TIMEOUT_MS);
+    }
   }
 
   /**
@@ -176,10 +193,6 @@ export class RoomSession {
    * Destroy in-memory room session resources
    */
   public destroy(): void {
-    if (this.saveTimeout) {
-      clearTimeout(this.saveTimeout);
-      this.saveTimeout = null;
-    }
     if (this.destroyTimeout) {
       clearTimeout(this.destroyTimeout);
       this.destroyTimeout = null;

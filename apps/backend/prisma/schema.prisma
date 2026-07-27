@@ -23,11 +23,12 @@ model Room {
 }
 
 model CodeSnapshot {
-  id        String   @id @default(cuid())
-  roomId    String
-  content   String   @db.Text
-  language  String
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  roomId     String
+  content    String   @db.Text
+  stateBytes Bytes?
+  language   String
+  createdAt  DateTime @default(now())
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 

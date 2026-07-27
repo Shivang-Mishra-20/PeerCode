@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import roomRoutes from './routes/roomRoutes';
 import { setupWebSocketGateway } from './sockets/websocketGateway';
 import { roomSessionManager } from './sockets/RoomSessionManager';
+import { roomPersistenceService } from './services/RoomPersistenceService';
 
 dotenv.config();
 
@@ -14,13 +15,22 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Enhanced service health & diagnostics endpoint
+// Enhanced service health & diagnostics endpoint with persistence metrics
 app.get('/health', (_req: Request, res: Response) => {
+  const persistenceMetrics = roomPersistenceService.getMetrics();
   res.status(200).json({
     status: 'healthy',
     service: 'peercode-backend',
-    activeRooms: roomSessionManager.getActiveRoomCount(),
-    connectedClients: roomSessionManager.getConnectedClientCount(),
+    metrics: {
+      activeRooms: roomSessionManager.getActiveRoomCount(),
+      connectedClients: roomSessionManager.getConnectedClientCount(),
+      dirtyRooms: roomSessionManager.getDirtyRoomCount(),
+      pendingSnapshotSaves: persistenceMetrics.pendingSnapshotSaves,
+      snapshotsLoaded: persistenceMetrics.snapshotsLoaded,
+      snapshotsSaved: persistenceMetrics.snapshotsSaved,
+      failedSaves: persistenceMetrics.failedSaves,
+      lastSuccessfulSnapshotAt: persistenceMetrics.lastSuccessfulSnapshotAt,
+    },
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
@@ -42,13 +52,16 @@ const server = http.createServer(app);
 const wss = setupWebSocketGateway(server);
 
 // Graceful shutdown handler for SIGINT / SIGTERM
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = async (signal: string) => {
   console.log(`\n[PeerCode Backend] ${signal} received. Initiating graceful shutdown...`);
 
   // Close WebSocket Server
   wss.close(() => {
     console.log('[WebSocketGateway] Closed all WebSocket connections.');
   });
+
+  // Flush pending snapshots to PostgreSQL for all dirty rooms before exit
+  await roomSessionManager.flushAllSessionsAsync();
 
   // Destroy in-memory room sessions
   for (const session of roomSessionManager.getAllSessions()) {

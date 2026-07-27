@@ -71,10 +71,18 @@ export const getRoomById = async (id: string): Promise<RoomResponse> => {
   };
 };
 
+export interface ExtendedSaveSnapshotPayload extends SaveSnapshotPayload {
+  stateBytes?: Buffer | Uint8Array | null;
+}
+
+export interface ExtendedCodeSnapshotDTO extends CodeSnapshotDTO {
+  stateBytes?: Buffer | null;
+}
+
 export const saveSnapshot = async (
   roomId: string,
-  payload: SaveSnapshotPayload
-): Promise<CodeSnapshotDTO> => {
+  payload: ExtendedSaveSnapshotPayload
+): Promise<ExtendedCodeSnapshotDTO> => {
   if (!roomId) {
     throw new ServiceError(400, 'Room ID is required');
   }
@@ -83,9 +91,7 @@ export const saveSnapshot = async (
     throw new ServiceError(400, 'Snapshot content is required');
   }
 
-  // Ensure room exists
-  const room = await getRoomById(roomId);
-  const language = payload.language || room.language;
+  const language = payload.language || 'javascript';
 
   if (payload.language && !isSupportedLanguage(payload.language)) {
     throw new ServiceError(
@@ -94,11 +100,24 @@ export const saveSnapshot = async (
     );
   }
 
+  // Ensure room record exists via upsert
+  const room = await prisma.room.upsert({
+    where: { id: roomId },
+    create: {
+      id: roomId,
+      language,
+    },
+    update: {},
+  });
+
+  const stateBytesBuffer = payload.stateBytes ? Buffer.from(payload.stateBytes) : null;
+
   const snapshot = await prisma.codeSnapshot.create({
     data: {
       roomId,
       content: payload.content,
-      language,
+      stateBytes: stateBytesBuffer,
+      language: room.language,
     },
   });
 
@@ -106,18 +125,27 @@ export const saveSnapshot = async (
     id: snapshot.id,
     roomId: snapshot.roomId,
     content: snapshot.content,
+    stateBytes: snapshot.stateBytes,
     language: snapshot.language as SupportedLanguage,
     createdAt: snapshot.createdAt.toISOString(),
   };
 };
 
-export const getLatestSnapshot = async (roomId: string): Promise<CodeSnapshotDTO | null> => {
+export const getLatestSnapshot = async (
+  roomId: string
+): Promise<ExtendedCodeSnapshotDTO | null> => {
   if (!roomId) {
     throw new ServiceError(400, 'Room ID is required');
   }
 
-  // Ensure room exists
-  await getRoomById(roomId);
+  // Gracefully handle uninitialized rooms
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+  });
+
+  if (!room) {
+    return null;
+  }
 
   const snapshot = await prisma.codeSnapshot.findFirst({
     where: { roomId },
@@ -132,6 +160,7 @@ export const getLatestSnapshot = async (roomId: string): Promise<CodeSnapshotDTO
     id: snapshot.id,
     roomId: snapshot.roomId,
     content: snapshot.content,
+    stateBytes: snapshot.stateBytes,
     language: snapshot.language as SupportedLanguage,
     createdAt: snapshot.createdAt.toISOString(),
   };

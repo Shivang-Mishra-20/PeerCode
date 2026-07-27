@@ -52,14 +52,14 @@ export const setupWebSocketGateway = (server: HttpServer): WebSocketServer => {
   // Handle WebSocket Connection
   wss.on(
     'connection',
-    (ws: WebSocket & { isAlive?: boolean }, _request: IncomingMessage, roomId: string) => {
+    async (ws: WebSocket & { isAlive?: boolean }, _request: IncomingMessage, roomId: string) => {
       ws.isAlive = true;
 
       ws.on('pong', () => {
         ws.isAlive = true;
       });
 
-      const session = roomSessionManager.getOrCreateSession(roomId);
+      const session = await roomSessionManager.getOrCreateSessionAsync(roomId);
       session.addClient(ws);
 
       console.log(

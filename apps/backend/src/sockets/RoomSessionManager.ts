@@ -1,4 +1,5 @@
 import { RoomSession } from './RoomSession';
+import { roomPersistenceService } from '../services/RoomPersistenceService';
 
 export class RoomSessionManager {
   private static instance: RoomSessionManager;
@@ -16,12 +17,17 @@ export class RoomSessionManager {
   }
 
   /**
-   * Retrieve existing RoomSession or instantiate new in-memory session
+   * Retrieve existing RoomSession or instantiate & hydrate new room session asynchronously
    */
-  public getOrCreateSession(roomId: string, initialContent?: string): RoomSession {
+  public async getOrCreateSessionAsync(roomId: string): Promise<RoomSession> {
     let session = this.sessions.get(roomId);
     if (!session) {
-      session = new RoomSession(roomId, initialContent);
+      session = new RoomSession(roomId);
+      session.onIdleEvict = (evictedRoomId) => this.removeSession(evictedRoomId);
+
+      // Hydrate state from latest database snapshot
+      await roomPersistenceService.hydrateRoomState(session);
+
       this.sessions.set(roomId, session);
       console.log(`[RoomSessionManager] Created room session '${roomId}'`);
     }
@@ -43,7 +49,6 @@ export class RoomSessionManager {
     if (session) {
       session.destroy();
       this.sessions.delete(roomId);
-      console.log(`[RoomSessionManager] Removed room session '${roomId}'`);
     }
   }
 
@@ -52,6 +57,17 @@ export class RoomSessionManager {
    */
   public getActiveRoomCount(): number {
     return this.sessions.size;
+  }
+
+  /**
+   * Count dirty room sessions with pending updates
+   */
+  public getDirtyRoomCount(): number {
+    let count = 0;
+    for (const session of this.sessions.values()) {
+      if (session.isDirty) count++;
+    }
+    return count;
   }
 
   /**
@@ -66,10 +82,17 @@ export class RoomSessionManager {
   }
 
   /**
-   * Retrieve all active room sessions (for metrics and graceful shutdown)
+   * Retrieve all active room sessions
    */
   public getAllSessions(): RoomSession[] {
     return Array.from(this.sessions.values());
+  }
+
+  /**
+   * Flush pending saves for all dirty rooms during server shutdown
+   */
+  public async flushAllSessionsAsync(): Promise<void> {
+    await roomPersistenceService.flushAll(this.getAllSessions());
   }
 }
 
