@@ -1,0 +1,10 @@
+Please perform a thorough code review of the following {language} code.
+Scope: {scope}
+Selection Bounds: Line {selection_start} to Line {selection_end}
+
+Code:
+```
+{code}
+```
+
+Identify all bugs, security risks, performance bottlenecks, code style issues, and refactoring opportunities. Ensure line numbers in "issues" and "refactor" correspond accurately to line numbers in the provided code.

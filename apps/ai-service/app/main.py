@@ -1,14 +1,15 @@
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import os
+from app.routers import health, generate
+from app.config import settings
 
 app = FastAPI(
-    title="PeerCode AI Service",
-    description="Microservice for local AI-powered code peer review using Ollama Qwen2.5-Coder",
+    title="PeerCode AI Peer Review Microservice",
+    description="FastAPI microservice providing AI code reviews, chat, and explanation streaming powered by local Ollama models.",
     version="0.1.0",
 )
 
-# CORS Middleware Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,12 +18,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(health.router)
+app.include_router(generate.router)
 
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "service": "peercode-ai-service",
-        "ollama_host": os.getenv("OLLAMA_HOST", "http://localhost:11434"),
-        "model": os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b"),
-    }
+if __name__ == "__main__":
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=True)

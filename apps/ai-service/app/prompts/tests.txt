@@ -1,0 +1,8 @@
+Generate a comprehensive, production-ready unit test suite for the following {language} code.
+
+Code:
+```
+{code}
+```
+
+Populate "summary" with a summary of the test suite and "code_output" with complete, runnable unit test code including all imports, mocks, and test cases.

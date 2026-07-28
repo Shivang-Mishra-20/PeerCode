@@ -1,0 +1,8 @@
+Please explain the following {language} code step-by-step.
+
+Code:
+```
+{code}
+```
+
+Populate the "summary" field with a high-level overview and the "explanation" field with a detailed walkthrough of the logic, algorithms, data structures, and edge cases.

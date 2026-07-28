@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "@peercode/ai-service"
+version = "0.1.0"
+description = "PeerCode FastAPI AI Peer Review & Ollama Integration Microservice"
+authors = ["PeerCode Team"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.0"
+uvicorn = {extras = ["standard"], version = "^0.32.0"}
+pydantic = "^2.9.0"
+pydantic-settings = "^2.6.0"
+httpx = "^0.27.0"
+sse-starlette = "^2.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
