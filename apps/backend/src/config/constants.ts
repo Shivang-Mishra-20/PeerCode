@@ -13,4 +13,7 @@ export const CONFIG = {
   REDIS_PASSWORD: process.env.REDIS_PASSWORD || undefined,
   ENABLE_REDIS: process.env.ENABLE_REDIS !== 'false',
   SESSION_TTL_SECONDS: parseInt(process.env.SESSION_TTL_SECONDS || '3600', 10),
+
+  // FastAPI AI Microservice URL
+  AI_SERVICE_URL: process.env.AI_SERVICE_URL || 'http://localhost:8000',
 };

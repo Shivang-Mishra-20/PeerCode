@@ -89,11 +89,7 @@ export class RedisPubSubService implements CollaborationTransport {
    * Publish CRDT document binary update to Redis
    */
   public async publishUpdate(roomId: string, update: Uint8Array): Promise<void> {
-    if (
-      !CONFIG.ENABLE_REDIS ||
-      !redisManager.redisPub ||
-      redisManager.getStatus() !== 'connected'
-    )
+    if (!CONFIG.ENABLE_REDIS || !redisManager.redisPub || redisManager.getStatus() !== 'connected')
       return;
 
     try {
@@ -115,11 +111,7 @@ export class RedisPubSubService implements CollaborationTransport {
    * Publish live awareness presence update to Redis
    */
   public async publishAwareness(roomId: string, awarenessUpdate: Uint8Array): Promise<void> {
-    if (
-      !CONFIG.ENABLE_REDIS ||
-      !redisManager.redisPub ||
-      redisManager.getStatus() !== 'connected'
-    )
+    if (!CONFIG.ENABLE_REDIS || !redisManager.redisPub || redisManager.getStatus() !== 'connected')
       return;
 
     try {
@@ -147,22 +139,14 @@ export class RedisPubSubService implements CollaborationTransport {
   ): Promise<void> {
     this.activeSubscriptions.set(roomId, { onUpdate, onAwareness });
 
-    if (
-      !CONFIG.ENABLE_REDIS ||
-      !redisManager.redisSub ||
-      redisManager.getStatus() !== 'connected'
-    )
+    if (!CONFIG.ENABLE_REDIS || !redisManager.redisSub || redisManager.getStatus() !== 'connected')
       return;
 
     await this.resubscribeChannels(roomId);
   }
 
   private async resubscribeChannels(roomId: string): Promise<void> {
-    if (
-      !CONFIG.ENABLE_REDIS ||
-      !redisManager.redisSub ||
-      redisManager.getStatus() !== 'connected'
-    )
+    if (!CONFIG.ENABLE_REDIS || !redisManager.redisSub || redisManager.getStatus() !== 'connected')
       return;
 
     try {
@@ -181,11 +165,7 @@ export class RedisPubSubService implements CollaborationTransport {
   public async unsubscribeRoom(roomId: string): Promise<void> {
     this.activeSubscriptions.delete(roomId);
 
-    if (
-      !CONFIG.ENABLE_REDIS ||
-      !redisManager.redisSub ||
-      redisManager.getStatus() !== 'connected'
-    )
+    if (!CONFIG.ENABLE_REDIS || !redisManager.redisSub || redisManager.getStatus() !== 'connected')
       return;
 
     try {

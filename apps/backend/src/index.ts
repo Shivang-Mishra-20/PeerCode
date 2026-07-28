@@ -3,12 +3,14 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import roomRoutes from './routes/roomRoutes';
+import aiRoutes from './routes/aiRoutes';
 import { setupWebSocketGateway } from './sockets/websocketGateway';
 import { roomSessionManager } from './sockets/RoomSessionManager';
 import { roomPersistenceService } from './services/RoomPersistenceService';
 import { redisManager } from './lib/redis';
 import { redisPubSubService } from './services/RedisPubSubService';
 import { redisSessionStore } from './services/RedisSessionStore';
+import { fastAPIClient } from './services/AIServiceClient';
 import { CONFIG } from './config/constants';
 
 dotenv.config();
@@ -19,11 +21,20 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Enhanced service health & diagnostics endpoint with persistence & Redis metrics
+// Enhanced service health & diagnostics endpoint with persistence, Redis, and non-blocking AI metrics
 app.get('/health', async (_req: Request, res: Response) => {
   const persistenceMetrics = roomPersistenceService.getMetrics();
   const redisMetrics = redisManager.getMetrics();
   const activeSessionsInRedis = await redisSessionStore.getActiveSessionCount();
+
+  // Non-blocking AI microservice health check capped at 500ms timeout
+  const aiHealthPromise = fastAPIClient.checkHealth(500);
+  const aiFallback = { status: 'unknown' };
+
+  const aiServiceStatus = await Promise.race([
+    aiHealthPromise,
+    new Promise((resolve) => setTimeout(() => resolve(aiFallback), 500)),
+  ]);
 
   res.status(200).json({
     status: 'healthy',
@@ -47,6 +58,7 @@ app.get('/health', async (_req: Request, res: Response) => {
       pubSubChannels: redisPubSubService.getSubscribedChannelCount(),
       transientSessions: activeSessionsInRedis,
     },
+    aiService: aiServiceStatus,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
   });
@@ -54,6 +66,7 @@ app.get('/health', async (_req: Request, res: Response) => {
 
 // REST API Routes
 app.use('/api/rooms', roomRoutes);
+app.use('/api/rooms', aiRoutes);
 
 // Centralized error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
