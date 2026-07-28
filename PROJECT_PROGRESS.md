@@ -3,8 +3,8 @@
 ## Summary
 
 - **Project Name**: PeerCode
-- **Status**: Milestone 4 Completed (Real-Time CRDT Collaboration, Yjs WebSockets, Persistence & Redis PubSub)
-- **Current Milestone**: Milestone 5 - FastAPI AI Microservice & Ollama Pipeline
+- **Status**: Milestone 5 Completed (AI Peer Review Microservice, Express AI Gateway & Monaco Diagnostics UI)
+- **Current Milestone**: Milestone 6 - Production-Ready Docker Infrastructure
 
 ---
 
@@ -41,21 +41,23 @@
 - [x] **Session 3**: Added dual Y.Doc/text snapshot persistence, `RoomPersistenceService`, 10s debounced auto-save, immediate disconnect flush, graceful exit flush, exponential backoff retries, and health metrics (`lastSuccessfulSnapshotAt`).
 - [x] **Session 4**: Added `CollaborationTransport` abstraction, production-ready Redis client (`redis.ts`), `RedisPubSubService` for multi-node room message relay, `RedisSessionStore` for transient session metadata with TTLs, dynamic channel sub/unsub, and mandatory Redis outage resilience fallback.
 
+### Milestone 5: FastAPI AI Microservice & Ollama Pipeline
+
+- [x] **Session 1**: Implemented `apps/ai-service` in Python 3.11 with FastAPI, Pydantic settings/schemas, `AIProvider` interface & `OllamaProvider` client, runtime `.txt` template prompt engine (`prompt_service.py`), unified SSE generation endpoint (`POST /api/v1/ai/generate`), diagnostic `/health` check, and explicit event protocol (`status`, `token`, `complete`, `error`).
+- [x] **Session 2**: Built Express AI gateway endpoint (`POST /api/rooms/:roomId/ai/generate`), `AIServiceClient` interface & `FastAPIClient`, `AIServiceProxy` orchestrator with priority code resolution, production reverse-proxy SSE headers (`X-Accel-Buffering: no`), `AbortController` request cancellation, and 500ms non-blocking `/health` check.
+- [x] **Session 3**: Built React AI streaming client (`aiClient.ts`) with 40ms token batch buffering, separated Monaco markers (`monacoMarkers.ts`) & line decorations (`monacoDecorations.ts`), `useAIReview` custom hook with state machine and in-memory `ReviewHistoryItem[]` history, extensible `ReviewToolbar`, and modular `AIReviewDrawer` (`SummaryTab`, `IssuesTab`, `RefactorTab`, `MetadataTab`).
+
 ---
 
 ## Upcoming Milestones
 
-### Milestone 5: FastAPI AI Microservice & Ollama Pipeline
+### Milestone 6: Production-Ready Docker Infrastructure
 
-- Scope: Python microservice with Ollama `qwen2.5-coder:7b` integration, Pydantic response parsing, and background task queueing.
+- Scope: Complete multi-container `docker-compose.yml` deploying Frontend SPA, Express Backend, FastAPI AI Service, PostgreSQL 16, and Redis 7 with health checks and persistent volumes.
 
-### Milestone 6: AI Peer Review UI & Monaco Markers
+### Milestone 7: Professional Documentation & Final Audit
 
-- Scope: End-to-end integration of AI suggestions into Monaco inline markers, highlights, and history panel.
-
-### Milestone 7: Final Polishing, Comprehensive Verification & Documentation
-
-- Scope: E2E testing, final README updates, screenshots, and interview readiness audit.
+- Scope: Comprehensive `README.md` with Mermaid architecture diagrams, setup guides, and project portfolio presentation.
 
 ---
 

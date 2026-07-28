@@ -11,6 +11,7 @@ export interface CodeEditorProps {
   value?: string;
   onChange?: (value: string | undefined) => void;
   onCursorChange?: (line: number, column: number) => void;
+  onEditorMount?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
   readOnly?: boolean;
   provider?: WebsocketProvider | null;
   yText?: Y.Text | null;
@@ -21,6 +22,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   value,
   onChange,
   onCursorChange,
+  onEditorMount,
   readOnly = false,
   provider,
   yText,
@@ -55,6 +57,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleEditorDidMount: OnMount = (ed, _monaco) => {
     setEditor(ed);
+    if (onEditorMount) {
+      onEditorMount(ed);
+    }
 
     // Track cursor position for status bar
     ed.onDidChangeCursorPosition((e) => {
@@ -98,28 +103,23 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         onMount={handleEditorDidMount}
         options={{
           readOnly,
-          fontSize: 13,
-          fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
-          lineHeight: 20,
+          fontSize: 14,
+          fontFamily: "'Fira Code', 'JetBrains Mono', Consolas, monospace",
           fontLigatures: true,
-          minimap: { enabled: false },
+          minimap: { enabled: true, side: 'right' },
           scrollBeyondLastLine: false,
-          smoothScrolling: true,
+          automaticLayout: true,
           cursorBlinking: 'smooth',
           cursorSmoothCaretAnimation: 'on',
-          automaticLayout: true,
-          tabSize: 2,
-          padding: { top: 12, bottom: 12 },
+          smoothScrolling: true,
           renderLineHighlight: 'all',
-          folding: true,
+          padding: { top: 12, bottom: 12 },
           lineNumbers: 'on',
-          glyphMargin: false,
-          overviewRulerBorder: false,
-          hideCursorInOverviewRuler: true,
+          glyphMargin: true,
+          folding: true,
+          links: true,
         }}
       />
     </div>
   );
 };
-
-export default CodeEditor;
