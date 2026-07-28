@@ -6,6 +6,10 @@ import roomRoutes from './routes/roomRoutes';
 import { setupWebSocketGateway } from './sockets/websocketGateway';
 import { roomSessionManager } from './sockets/RoomSessionManager';
 import { roomPersistenceService } from './services/RoomPersistenceService';
+import { redisManager } from './lib/redis';
+import { redisPubSubService } from './services/RedisPubSubService';
+import { redisSessionStore } from './services/RedisSessionStore';
+import { CONFIG } from './config/constants';
 
 dotenv.config();
 
@@ -15,9 +19,12 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
-// Enhanced service health & diagnostics endpoint with persistence metrics
-app.get('/health', (_req: Request, res: Response) => {
+// Enhanced service health & diagnostics endpoint with persistence & Redis metrics
+app.get('/health', async (_req: Request, res: Response) => {
   const persistenceMetrics = roomPersistenceService.getMetrics();
+  const redisMetrics = redisManager.getMetrics();
+  const activeSessionsInRedis = await redisSessionStore.getActiveSessionCount();
+
   res.status(200).json({
     status: 'healthy',
     service: 'peercode-backend',
@@ -30,6 +37,15 @@ app.get('/health', (_req: Request, res: Response) => {
       snapshotsSaved: persistenceMetrics.snapshotsSaved,
       failedSaves: persistenceMetrics.failedSaves,
       lastSuccessfulSnapshotAt: persistenceMetrics.lastSuccessfulSnapshotAt,
+    },
+    redis: {
+      status: redisMetrics.status,
+      enabled: CONFIG.ENABLE_REDIS,
+      nodeId: redisMetrics.nodeId,
+      reconnectCount: redisMetrics.reconnectCount,
+      lastReconnectAt: redisMetrics.lastReconnectAt,
+      pubSubChannels: redisPubSubService.getSubscribedChannelCount(),
+      transientSessions: activeSessionsInRedis,
     },
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -68,6 +84,9 @@ const gracefulShutdown = async (signal: string) => {
     roomSessionManager.removeSession(session.id);
   }
 
+  // Disconnect Redis clients
+  await redisManager.disconnectAll();
+
   // Close HTTP Server
   server.close(() => {
     console.log('[PeerCode Backend] Server closed successfully.');
@@ -86,7 +105,9 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 if (process.env.NODE_ENV !== 'test') {
   server.listen(port, () => {
-    console.log(`[PeerCode Backend] Server running on port ${port} (HTTP & WebSockets)`);
+    console.log(
+      `[PeerCode Backend] Server running on port ${port} (HTTP & WebSockets, NodeId: ${redisManager.getMetrics().nodeId})`
+    );
   });
 }
 

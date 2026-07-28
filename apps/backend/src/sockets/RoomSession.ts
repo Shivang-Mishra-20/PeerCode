@@ -5,10 +5,14 @@ import * as awarenessProtocol from 'y-protocols/awareness';
 import * as encoding from 'lib0/encoding';
 import * as decoding from 'lib0/decoding';
 import { roomPersistenceService } from '../services/RoomPersistenceService';
+import { CollaborationTransport } from './CollaborationTransport';
+import { redisPubSubService } from '../services/RedisPubSubService';
+import { redisSessionStore } from '../services/RedisSessionStore';
 import { CONFIG } from '../config/constants';
 
 export const MESSAGE_SYNC = 0;
 export const MESSAGE_AWARENESS = 1;
+const ORIGIN_REDIS_REMOTE = 'REDIS_REMOTE';
 
 export class RoomSession {
   public id: string;
@@ -19,14 +23,20 @@ export class RoomSession {
   public isDirty: boolean;
   public destroyTimeout: NodeJS.Timeout | null = null;
   public onIdleEvict?: (roomId: string) => void;
+  private transport: CollaborationTransport;
 
-  constructor(id: string, initialContent?: string) {
+  constructor(
+    id: string,
+    initialContent?: string,
+    transport: CollaborationTransport = redisPubSubService
+  ) {
     this.id = id;
     this.doc = new Y.Doc();
     this.awareness = new awarenessProtocol.Awareness(this.doc);
     this.clients = new Set<WebSocket>();
     this.clientAwarenessIDs = new Map<WebSocket, Set<number>>();
     this.isDirty = false;
+    this.transport = transport;
 
     // Seed initial content if provided (legacy hydration fallback)
     if (initialContent) {
@@ -34,13 +44,27 @@ export class RoomSession {
       yText.insert(0, initialContent);
     }
 
+    // Subscribe to remote transport messages across nodes
+    this.transport.subscribeRoom(
+      this.id,
+      (update: Uint8Array) => this.handleRemoteUpdate(update),
+      (awarenessUpdate: Uint8Array) => this.handleRemoteAwareness(awarenessUpdate)
+    );
+
     // Listen to document update events
     this.doc.on('update', (update: Uint8Array, origin: unknown) => {
       roomPersistenceService.scheduleDebouncedSave(this);
+
+      // Local WebSocket broadcast
       const encoder = encoding.createEncoder();
       encoding.writeVarUint(encoder, MESSAGE_SYNC);
       syncProtocol.writeUpdate(encoder, update);
       this.broadcast(encoding.toUint8Array(encoder), origin as WebSocket);
+
+      // Publish to distributed transport if update originated locally
+      if (origin !== ORIGIN_REDIS_REMOTE) {
+        this.transport.publishUpdate(this.id, update);
+      }
     });
 
     // Listen to awareness update events (presence & cursors)
@@ -61,19 +85,48 @@ export class RoomSession {
         }
 
         const changedClients = added.concat(updated, removed);
+        const encodedAwareness = awarenessProtocol.encodeAwarenessUpdate(
+          this.awareness,
+          changedClients
+        );
+
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
-        encoding.writeVarUint8Array(
-          encoder,
-          awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
-        );
+        encoding.writeVarUint8Array(encoder, encodedAwareness);
         this.broadcast(encoding.toUint8Array(encoder), ws);
+
+        // Publish to distributed transport if awareness originated locally
+        if (origin !== ORIGIN_REDIS_REMOTE) {
+          this.transport.publishAwareness(this.id, encodedAwareness);
+        }
       }
     );
   }
 
   /**
-   * Reusable broadcast helper to transmit binary buffers to all room sockets
+   * Apply remote CRDT update received from another backend node via transport
+   */
+  private handleRemoteUpdate(update: Uint8Array): void {
+    try {
+      Y.applyUpdate(this.doc, update, ORIGIN_REDIS_REMOTE);
+    } catch (err) {
+      console.error(`[RoomSession:${this.id}] Error applying remote CRDT update:`, err);
+    }
+  }
+
+  /**
+   * Apply remote awareness update received from another backend node via transport
+   */
+  private handleRemoteAwareness(awarenessUpdate: Uint8Array): void {
+    try {
+      awarenessProtocol.applyAwarenessUpdate(this.awareness, awarenessUpdate, ORIGIN_REDIS_REMOTE);
+    } catch (err) {
+      console.error(`[RoomSession:${this.id}] Error applying remote awareness:`, err);
+    }
+  }
+
+  /**
+   * Reusable broadcast helper to transmit binary buffers to all local room sockets
    */
   private broadcast(buffer: Uint8Array, except?: WebSocket): void {
     for (const client of this.clients) {
@@ -95,6 +148,9 @@ export class RoomSession {
       clearTimeout(this.destroyTimeout);
       this.destroyTimeout = null;
     }
+
+    // Update transient session in Redis
+    redisSessionStore.setSession(this.id, this.clients.size);
 
     // Send initial Yjs Sync Step 1 to new client
     this.sendSyncStep1(ws);
@@ -124,6 +180,9 @@ export class RoomSession {
       awarenessProtocol.removeAwarenessStates(this.awareness, Array.from(clientIDs), null);
     }
     this.clientAwarenessIDs.delete(ws);
+
+    // Update transient session in Redis
+    redisSessionStore.setSession(this.id, this.clients.size);
 
     // If last client disconnected, flush pending save immediately and schedule 60s idle eviction
     if (this.clients.size === 0) {
@@ -190,13 +249,18 @@ export class RoomSession {
   }
 
   /**
-   * Destroy in-memory room session resources
+   * Destroy in-memory room session resources and unsubscribe from transport
    */
   public destroy(): void {
     if (this.destroyTimeout) {
       clearTimeout(this.destroyTimeout);
       this.destroyTimeout = null;
     }
+
+    // Unsubscribe from Redis pub/sub transport
+    this.transport.unsubscribeRoom(this.id);
+    redisSessionStore.removeSession(this.id);
+
     this.awareness.destroy();
     this.doc.destroy();
     this.clients.clear();
