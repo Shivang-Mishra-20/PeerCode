@@ -3,8 +3,8 @@
 ## Summary
 
 - **Project Name**: PeerCode
-- **Status**: Milestone 5 Completed (AI Peer Review Microservice, Express AI Gateway & Monaco Diagnostics UI)
-- **Current Milestone**: Milestone 6 - Production-Ready Docker Infrastructure
+- **Status**: Milestone 6 Completed (Developer-First Containerization & Deployment Infrastructure)
+- **Current Milestone**: Milestone 7 - Professional Documentation & Final Audit
 
 ---
 
@@ -47,13 +47,15 @@
 - [x] **Session 2**: Built Express AI gateway endpoint (`POST /api/rooms/:roomId/ai/generate`), `AIServiceClient` interface & `FastAPIClient`, `AIServiceProxy` orchestrator with priority code resolution, production reverse-proxy SSE headers (`X-Accel-Buffering: no`), `AbortController` request cancellation, and 500ms non-blocking `/health` check.
 - [x] **Session 3**: Built React AI streaming client (`aiClient.ts`) with 40ms token batch buffering, separated Monaco markers (`monacoMarkers.ts`) & line decorations (`monacoDecorations.ts`), `useAIReview` custom hook with state machine and in-memory `ReviewHistoryItem[]` history, extensible `ReviewToolbar`, and modular `AIReviewDrawer` (`SummaryTab`, `IssuesTab`, `RefactorTab`, `MetadataTab`).
 
+### Milestone 6: Developer-First Containerization & Deployment Infrastructure
+
+- [x] **Developer Docker Setup**: Positioned Dockerfiles alongside their services (`apps/frontend/Dockerfile`, `apps/backend/Dockerfile`, `apps/ai-service/Dockerfile`).
+- [x] **Single Root Compose**: Configured unified `docker-compose.yml` orchestrating `postgres`, `redis`, `backend`, `ai-service`, and `frontend` with shared `peercode-network` bridge.
+- [x] **Automated DB Migration & Healthchecks**: Configured automatic Prisma migration deployment (`npx prisma db push`) on backend startup, persistent volume retention (`postgres_data`, `redis_data`), simplified container healthchecks, and native host Ollama GPU integration (`host.docker.internal:11434`).
+
 ---
 
 ## Upcoming Milestones
-
-### Milestone 6: Production-Ready Docker Infrastructure
-
-- Scope: Complete multi-container `docker-compose.yml` deploying Frontend SPA, Express Backend, FastAPI AI Service, PostgreSQL 16, and Redis 7 with health checks and persistent volumes.
 
 ### Milestone 7: Professional Documentation & Final Audit
 

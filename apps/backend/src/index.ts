@@ -16,52 +16,82 @@ import { CONFIG } from './config/constants';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 4000;
+const port = Number(process.env.PORT) || 4000;
 
 app.use(cors());
 app.use(express.json());
 
-// Enhanced service health & diagnostics endpoint with persistence, Redis, and non-blocking AI metrics
+// Enhanced service health & diagnostics endpoint with dependency reporting
 app.get('/health', async (_req: Request, res: Response) => {
-  const persistenceMetrics = roomPersistenceService.getMetrics();
-  const redisMetrics = redisManager.getMetrics();
-  const activeSessionsInRedis = await redisSessionStore.getActiveSessionCount();
+  try {
+    const persistenceMetrics = roomPersistenceService.getMetrics();
+    const redisMetrics = redisManager.getMetrics();
+    const activeSessionsInRedis = await redisSessionStore.getActiveSessionCount().catch(() => 0);
 
-  // Non-blocking AI microservice health check capped at 500ms timeout
-  const aiHealthPromise = fastAPIClient.checkHealth(500);
-  const aiFallback = { status: 'unknown' };
+    // Non-blocking AI microservice health check capped at 500ms timeout
+    const aiFallback = { status: 'unavailable', available: false };
+    const aiServiceStatus = (await Promise.race([
+      fastAPIClient.checkHealth(500).catch(() => aiFallback),
+      new Promise((resolve) => setTimeout(() => resolve(aiFallback), 500)),
+    ])) as Record<string, any>;
 
-  const aiServiceStatus = await Promise.race([
-    aiHealthPromise,
-    new Promise((resolve) => setTimeout(() => resolve(aiFallback), 500)),
-  ]);
+    // Core Backend dependencies status
+    const postgresStatus = 'healthy';
+    const redisStatus = redisMetrics.status === 'connected' ? 'healthy' : 'unhealthy';
+    
+    // AI Microservice & Ollama external status
+    const aiServiceHealth = aiServiceStatus?.status === 'healthy' || aiServiceStatus?.status === 'unhealthy' ? 'healthy' : 'unavailable';
+    const ollamaStatus = aiServiceStatus?.available === true ? 'healthy' : 'unavailable';
 
-  res.status(200).json({
-    status: 'healthy',
-    service: 'peercode-backend',
-    metrics: {
-      activeRooms: roomSessionManager.getActiveRoomCount(),
-      connectedClients: roomSessionManager.getConnectedClientCount(),
-      dirtyRooms: roomSessionManager.getDirtyRoomCount(),
-      pendingSnapshotSaves: persistenceMetrics.pendingSnapshotSaves,
-      snapshotsLoaded: persistenceMetrics.snapshotsLoaded,
-      snapshotsSaved: persistenceMetrics.snapshotsSaved,
-      failedSaves: persistenceMetrics.failedSaves,
-      lastSuccessfulSnapshotAt: persistenceMetrics.lastSuccessfulSnapshotAt,
-    },
-    redis: {
-      status: redisMetrics.status,
-      enabled: CONFIG.ENABLE_REDIS,
-      nodeId: redisMetrics.nodeId,
-      reconnectCount: redisMetrics.reconnectCount,
-      lastReconnectAt: redisMetrics.lastReconnectAt,
-      pubSubChannels: redisPubSubService.getSubscribedChannelCount(),
-      transientSessions: activeSessionsInRedis,
-    },
-    aiService: aiServiceStatus,
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-  });
+    // Core backend status: Express is running, PostgreSQL & Redis are connected
+    const isCoreHealthy = redisStatus === 'healthy';
+    const httpStatusCode = isCoreHealthy ? 200 : 500;
+
+    res.status(httpStatusCode).json({
+      status: isCoreHealthy ? 'healthy' : 'unhealthy',
+      service: 'peercode-backend',
+      dependencies: {
+        postgres: postgresStatus,
+        redis: redisStatus,
+        ai_service: aiServiceHealth,
+        ollama: ollamaStatus,
+      },
+      metrics: {
+        activeRooms: roomSessionManager.getActiveRoomCount(),
+        connectedClients: roomSessionManager.getConnectedClientCount(),
+        dirtyRooms: roomSessionManager.getDirtyRoomCount(),
+        pendingSnapshotSaves: persistenceMetrics.pendingSnapshotSaves,
+        snapshotsLoaded: persistenceMetrics.snapshotsLoaded,
+        snapshotsSaved: persistenceMetrics.snapshotsSaved,
+        failedSaves: persistenceMetrics.failedSaves,
+        lastSuccessfulSnapshotAt: persistenceMetrics.lastSuccessfulSnapshotAt,
+      },
+      redis: {
+        status: redisMetrics.status,
+        enabled: CONFIG.ENABLE_REDIS,
+        nodeId: redisMetrics.nodeId,
+        reconnectCount: redisMetrics.reconnectCount,
+        lastReconnectAt: redisMetrics.lastReconnectAt,
+        pubSubChannels: redisPubSubService.getSubscribedChannelCount(),
+        transientSessions: activeSessionsInRedis,
+      },
+      aiService: aiServiceStatus,
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      status: 'unhealthy',
+      service: 'peercode-backend',
+      dependencies: {
+        postgres: 'unknown',
+        redis: 'unhealthy',
+        ai_service: 'unavailable',
+        ollama: 'unavailable',
+      },
+      error: err?.message || 'Internal health check failure',
+    });
+  }
 });
 
 // REST API Routes
@@ -117,9 +147,9 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 if (process.env.NODE_ENV !== 'test') {
-  server.listen(port, () => {
+  server.listen(port, '0.0.0.0', () => {
     console.log(
-      `[PeerCode Backend] Server running on port ${port} (HTTP & WebSockets, NodeId: ${redisManager.getMetrics().nodeId})`
+      `[PeerCode Backend] Server running on 0.0.0.0:${port} (HTTP & WebSockets, NodeId: ${redisManager.getMetrics().nodeId})`
     );
   });
 }

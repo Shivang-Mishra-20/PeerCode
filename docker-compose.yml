@@ -1,0 +1,137 @@
+services:
+  # 1. PostgreSQL 16 Relational Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: peercode-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: peercode_user
+      POSTGRES_PASSWORD: peercode_secret
+      POSTGRES_DB: peercode_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - peercode-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U peercode_user -d peercode_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis 7 Session Cache & Pub/Sub Relay
+  redis:
+    image: redis:7-alpine
+    container_name: peercode-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - peercode-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Express REST API & Yjs WebSocket Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: peercode-backend
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgresql://peercode_user:peercode_secret@postgres:5432/peercode_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      AI_SERVICE_URL: http://ai-service:8000
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+    networks:
+      - peercode-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:4000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # 4. FastAPI AI Peer Review Microservice
+  ai-service:
+    build:
+      context: .
+      dockerfile: apps/ai-service/Dockerfile
+    container_name: peercode-ai-service
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: development
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      DEFAULT_MODEL: qwen2.5-coder:7b
+    volumes:
+      - ./apps/ai-service/app:/app/app
+    networks:
+      - peercode-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # 5. React SPA Frontend Application (Vite Dev Server)
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+    container_name: peercode-frontend
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    ports:
+      - "3000:3000"
+    environment:
+      VITE_API_URL: http://localhost:4000
+      VITE_WS_URL: ws://localhost:4000
+    volumes:
+      - ./apps/frontend/src:/app/apps/frontend/src
+      - ./apps/frontend/public:/app/apps/frontend/public
+    networks:
+      - peercode-network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  peercode-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
