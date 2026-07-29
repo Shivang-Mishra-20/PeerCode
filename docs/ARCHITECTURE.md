@@ -2,98 +2,161 @@
 
 ## Overview
 
-PeerCode is a distributed, real-time collaborative code editor equipped with automated, local AI peer review. The architecture decouples real-time CRDT document synchronization from CPU/GPU-intensive AI inference microservices.
+PeerCode is a real-time collaborative code editor equipped with local AI peer review capabilities. The architecture decouples real-time CRDT document synchronization from local AI inference microservices.
+
+---
+
+## 1. System Architecture Topology
 
 ```mermaid
 flowchart TD
-    Client["React + Monaco Editor\n(Frontend SPA)"]
-    WS["WebSocket Server\n(Yjs CRDT Provider)"]
-    API["Express API Server\n(Node.js / TypeScript)"]
-    DB[(PostgreSQL\nPrisma ORM)]
-    Cache[(Redis\nPub/Sub & Sessions)]
-    AI["FastAPI Service\n(Python Microservice)"]
-    Ollama["Ollama Daemon\n(Qwen2.5-Coder 7B)"]
+    subgraph ClientLayer["Frontend Layer"]
+        SPA["React SPA + Monaco Editor"]
+    end
 
-    Client <-->|WebSockets / Yjs Sync| WS
-    Client <-->|REST API| API
-    WS <--> API
-    API <--> DB
-    API <--> Cache
-    API -->|HTTP REST / Debounced| AI
-    AI -->|HTTP / JSON Mode| Ollama
+    subgraph InfrastructureLayer["Docker Container Network"]
+        GW["Express API & WS Gateway"]
+        Redis[("Redis 7 Cache & Pub/Sub")]
+        PG[("PostgreSQL 16 Database")]
+        AI["FastAPI AI Microservice"]
+    end
+
+    subgraph HostLayer["Host Machine Infrastructure"]
+        Ollama["Local Ollama Engine"]
+    end
+
+    SPA -->|WebSockets & Yjs Sync| GW
+    SPA -->|HTTP & SSE Stream| GW
+    GW -->|Pub/Sub Relay| Redis
+    GW -->|Prisma ORM| PG
+    GW -->|POST Request| AI
+    AI -->|HTTP Streaming| Ollama
 ```
 
 ---
 
-## Key Subsystems
+## 2. Core Components
 
-### 1. Frontend Client (`apps/frontend`)
+### A. Frontend Client (`apps/frontend`)
+- **Framework**: React 18 with Vite, TypeScript, and Tailwind CSS.
+- **Code Editor**: Monaco Editor (VS Code core editing engine).
+- **CRDT Synchronization**: `yjs` + `y-monaco` + `y-websocket` for lock-free multi-user document state convergence and live awareness tracking (remote collaborator cursors and selections).
+- **AI Integration Client**: Dedicated SSE streaming client (`aiClient.ts`), modular review drawer (`AIReviewDrawer`), and isolated Monaco diagnostic managers (`monacoMarkers.ts` and `monacoDecorations.ts`).
 
-- **UI Framework**: React 18 with Vite, TypeScript, and Tailwind CSS.
-- **Code Editor**: Monaco Editor (VS Code core engine).
-- **CRDT Layer**: `yjs` + `y-monaco` + `y-websocket` for lock-free multi-user document state convergence and live cursor awareness.
-
-### 2. Primary Backend (`apps/backend`)
-
+### B. Express Backend Gateway (`apps/backend`)
 - **Runtime**: Node.js with Express and TypeScript.
-- **WebSocket Gateway**: Manages real-time room sessions, relays CRDT delta updates across connected peers, and publishes state events to Redis.
-- **Persistence**: PostgreSQL via Prisma ORM for room configurations, snapshot history, and past AI review records.
-- **State Buffer**: Redis for pub/sub messaging across WS nodes and fast transient session state storage.
+- **WebSocket Gateway**: Manages real-time room sessions, relays Yjs CRDT binary deltas across connected clients, and synchronizes state across backend instances via Redis Pub/Sub.
+- **AI Gateway & Context Binding**: Captures current room document snapshots and proxies review requests to the FastAPI microservice using Server-Sent Events (SSE).
+- **Persistence & Diagnostics**: Manages database migrations via Prisma ORM, stores room snapshots in PostgreSQL, and exposes a structured health endpoint (`/health`) with isolated dependency reporting (`postgres`, `redis`, `ai_service`, `ollama`).
 
-### 3. AI Peer Review Microservice (`apps/ai-service`)
-
-- **Runtime**: Python 3.11 with FastAPI and Pydantic.
-- **Model Engine**: Local Ollama instance serving `Qwen2.5-Coder:7b`.
-- **Structured Output**: Strict JSON enforcement for line-level suggestions (`bug`, `smell`, `inefficiency`, `unused`).
-- **Concurrency & Queueing**: Server-side room debouncing (3s idle threshold) and asynchronous request queuing to prevent local hardware saturation.
+### C. FastAPI AI Microservice (`apps/ai-service`)
+- **Runtime**: Python 3.11 with FastAPI and Pydantic v2 schemas.
+- **Model Integration**: Communicates with local Ollama engine serving `qwen2.5-coder:7b`.
+- **Streaming & Verification**: Validates incoming prompt requests, enforces JSON output formats for code reviews, and streams live tokens back to the Express gateway using SSE.
 
 ---
 
-## Data Flow Sequence
+## 3. Real-Time Collaboration Sequence
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User1 as User A (Browser)
-    actor User2 as User B (Browser)
-    participant WS as Express WebSocket Server
-    participant Redis as Redis Cache
-    participant DB as PostgreSQL
-    participant AI as FastAPI Microservice
-    participant Ollama as Local Ollama Engine
+    actor UserA as User A Browser
+    actor UserB as User B Browser
+    participant GW as Express WS Gateway
+    participant Redis as Redis Pub/Sub Relay
+    participant PG as PostgreSQL Database
 
-    User1->>WS: Yjs Document Update (Binary Delta)
-    WS->>User2: Broadcast Delta Update
-    WS->>Redis: Buffer Delta & Update Awareness State
-
-    Note over WS: Debounce Timer (3s idle)
-    WS->>AI: POST /api/v1/review (Code Snapshot + Language)
-    AI->>Ollama: Prompt (Qwen2.5-Coder 7B, JSON format)
-    Ollama-->>AI: Raw JSON Code Analysis
-    AI-->>WS: Formatted AI Suggestions Payload
-    WS->>DB: Persist AI Review History
-    WS-->>User1: Push AI Markers & Highlights
-    WS-->>User2: Push AI Markers & Highlights
+    UserA->>GW: Yjs Binary Delta Update
+    GW->>UserB: Direct WebSocket Relay
+    GW->>Redis: Publish Room Delta
+    Redis-->>GW: Relay Delta to Peer Gateway Nodes
+    Note over GW: Debounced Document Idle Check
+    GW->>PG: Upsert Room Snapshot
 ```
 
 ---
 
-## Directory Topology (Monorepo Layout)
+## 4. Live SSE AI Peer Review Sequence
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User Monaco Editor
+    participant Client as React AI Client
+    participant GW as Express AI Gateway
+    participant AI as FastAPI Microservice
+    participant Ollama as Local Ollama Engine
+
+    User->>Client: Click Review Code
+    Client->>GW: POST Stream Request
+    GW->>GW: Bind Yjs Context and Extract Snapshot
+    GW->>AI: POST Generate Stream Payload
+    AI->>Ollama: POST Generate Stream
+    Ollama-->>AI: Stream Token Chunks
+    AI-->>GW: SSE Event Stream
+    GW-->>Client: SSE Event Stream
+    Note over Client: Buffer Incoming Stream Tokens
+    Client-->>User: Live UI Stream Update
+    Client->>User: Apply Monaco Markers and Line Decorations
 ```
+
+---
+
+## 5. Component & Database Entity Diagram
+
+```mermaid
+erDiagram
+    Room ||--o{ Snapshot : contains
+    Room ||--o{ AIReview : has
+
+    Room {
+        string id PK
+        string name
+        string language
+        datetime createdAt
+        datetime updatedAt
+    }
+
+    Snapshot {
+        string id PK
+        string roomId FK
+        bytes content
+        datetime createdAt
+    }
+
+    AIReview {
+        string id PK
+        string roomId FK
+        string model
+        json response
+        datetime createdAt
+    }
+```
+
+---
+
+## 6. Monorepo Directory Topology
+
+```text
 PeerCode/
 ├── apps/
 │   ├── frontend/         # React SPA + Monaco Editor + Yjs client
+│   │   ├── src/          # Components, hooks, services, utils
+│   │   └── Dockerfile    # Developer-first Dockerfile (Port 3000)
 │   ├── backend/          # Express API + WebSocket Gateway + Prisma ORM
-│   └── ai-service/       # FastAPI + Ollama integration microservice
+│   │   ├── src/          # Routes, sockets, services, lib
+│   │   ├── prisma/       # PostgreSQL schema definition
+│   │   └── Dockerfile    # Developer-first Dockerfile (Port 4000)
+│   └── ai-service/       # FastAPI + Ollama microservice
+│       ├── app/          # Main application, routes, services
+│       └── Dockerfile    # Developer-first Dockerfile (Port 8000)
 ├── packages/
-│   └── shared/           # Shared TypeScript interfaces & API contracts
-├── docker/
-│   └── docker-compose.yml# PostgreSQL 16 & Redis 7 services
-├── docs/
-│   ├── ARCHITECTURE.md   # Architectural reference & diagrams
-│   └── CONVENTIONS.md    # Development standards & guidelines
+│   └── shared/           # Shared TypeScript types & API contracts
+├── docs/                 # Architectural references & technical decisions
+│   ├── ARCHITECTURE.md   # System architecture & sequence diagrams
+│   └── DESIGN_DECISIONS.md # Engineering rationale & technology trade-offs
 ├── .env.example          # Root environment template
-├── package.json          # Root npm workspace manifest
-└── PROJECT_PROGRESS.md   # Development tracker & milestone status
+├── docker-compose.yml    # Root Docker Compose specification
+└── package.json          # Monorepo workspace configuration
 ```

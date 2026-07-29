@@ -1,63 +1,96 @@
 # PeerCode
 
-> Real-time collaborative code editor with local AI-powered peer review.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?logo=docker&logoColor=white)](docker-compose.yml)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-339933.svg?logo=nodedotjs&logoColor=white)](apps/backend/package.json)
+[![Python](https://img.shields.io/badge/FastAPI-3.11-009688.svg?logo=fastapi&logoColor=white)](apps/ai-service/pyproject.toml)
 
-PeerCode is an open-source collaborative code editor designed for real-time pair programming and instant local AI feedback. It pairs CRDT-based document synchronization with a local LLM microservice (`Qwen2.5-Coder:7b` via Ollama) to analyze code for logical bugs, performance bottlenecks, and code smells without transmitting code to third-party cloud APIs.
+> A real-time collaborative code editor with local AI-powered code review.
+
+PeerCode is an open-source collaborative code editor built for real-time pair programming and instant local AI feedback. It pairs Conflict-Free Replicated Data Types (Yjs CRDTs) with a local Ollama model to analyze code for bugs, smells, and optimization opportunities—without transmitting code to cloud APIs.
 
 ---
 
-## Key Features
+## Overview
 
-- **Real-time Collaboration**: Multi-user concurrent code editing powered by Yjs CRDTs over WebSockets.
-- **Awareness & Presence**: Real-time multi-cursor position tracking and active collaborator indicators.
-- **Local AI Peer Review**: Automated background code analysis using `Qwen2.5-Coder 7B` via Ollama.
-- **Multi-Language Support**: Syntax highlighting and specialized AI review rules for JavaScript, TypeScript, Python, and C++.
-- **Session Restoration & Snapshots**: Automated state saving to PostgreSQL with session reload capabilities.
-- **Structured Code Insights**: Line-level editor markers for detected bugs, smells, unused variables, and optimization opportunities.
+PeerCode enables seamless pair programming for engineering teams through real-time, lock-free code editing. Multiple developers can write, edit, and navigate shared code simultaneously over low-latency WebSockets without merge conflicts or lost keystrokes.
+
+It provides private code intelligence by running line-level AI peer reviews locally via Ollama. By executing models on host system infrastructure, PeerCode delivers instant, automated code reviews with zero per-token API charges while helping keep source code on the developer's machine.
+
+---
+
+## Core Features
+
+### Real-Time Collaboration
+- **Yjs CRDT Sync**: Lock-free multi-client editing with eventual consistency.
+- **WebSocket Gateway**: Low-latency event streaming over `y-websocket`.
+- **Live Presence**: Real-time remote cursor tracking and user presence indicators.
+
+### AI-Powered Code Review
+- **Local AI Analysis**: Private, local code reviews via Ollama without data egress.
+- **SSE Token Streaming**: Real-time token streaming directly into an interactive review panel.
+- **Monaco Diagnostics**: Automated editor markers highlighting bugs, code smells, and unused variables.
+- **Explainable Suggestions**: Actionable review tabs (Summary, Issues, Refactor, Metadata).
+
+### Persistence & Infrastructure
+- **PostgreSQL Snapshots**: Background persistence for room states and snapshot history.
+- **Redis Pub/Sub & Caching**: Session state caching and multi-node Pub/Sub broadcasting.
+- **Docker-First Environment**: Single-command containerized setup via Docker Compose V2.
 
 ---
 
 ## Tech Stack
 
-| Layer                | Technologies                                                    |
-| :------------------- | :-------------------------------------------------------------- |
-| **Frontend**         | React 18, TypeScript, Monaco Editor, Tailwind CSS, React Router |
-| **Realtime Engine**  | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`)              |
-| **Backend API**      | Node.js, Express, TypeScript, Prisma ORM                        |
-| **Database & Cache** | PostgreSQL 16, Redis 7                                          |
-| **AI Microservice**  | Python 3.11, FastAPI, Pydantic, Ollama (`Qwen2.5-Coder:7b`)     |
-| **Infrastructure**   | Docker Compose                                                  |
+| Layer | Technologies |
+| :--- | :--- |
+| **Frontend** | React 18, TypeScript, Monaco Editor, Tailwind CSS, Vite |
+| **Real-Time Engine** | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`) |
+| **Backend Gateway** | Node.js, Express, TypeScript, Prisma ORM |
+| **Database & Caching** | PostgreSQL 16, Redis 7 |
+| **AI Microservice** | Python 3.11, FastAPI, Pydantic v2, Ollama (`Qwen2.5-Coder:7b`) |
+| **Infrastructure** | Docker Compose V2 |
 
 ---
 
-## Architecture Overview
+## System Architecture
 
 ```mermaid
-flowchart LR
-    Client["React + Monaco Editor"] <-->|WebSockets / Yjs| Backend["Node.js + Express WS Gateway"]
-    Backend <-->|Prisma ORM| DB[(PostgreSQL)]
-    Backend <-->|Pub/Sub| Redis[(Redis)]
-    Backend -->|REST API| AIService["Python FastAPI"]
-    AIService -->|Local API| Ollama["Ollama (Qwen2.5-Coder)"]
+flowchart TD
+    Client["React SPA + Monaco Editor"]
+    GW["Express API & WS Gateway"]
+    Redis[("Redis 7 Cache & Pub/Sub")]
+    PG[("PostgreSQL 16 Database")]
+    AI["FastAPI AI Microservice"]
+    Ollama["Ollama (Local LLM)"]
+
+    Client -->|WebSockets & Yjs Sync| GW
+    Client -->|HTTP & SSE Stream| GW
+    GW -->|Pub/Sub Relay| Redis
+    GW -->|Prisma ORM| PG
+    GW -->|REST API| AI
+    AI -->|HTTP Streaming| Ollama
 ```
 
-For comprehensive details on system flow and sequence diagrams, refer to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For full sequence diagrams and subsystem breakdowns, refer to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## Monorepo Layout
+## Project Structure
 
-```
+```text
 PeerCode/
 ├── apps/
-│   ├── frontend/         # React application & Monaco Editor interface
-│   ├── backend/          # Express API & WebSocket collaboration gateway
-│   └── ai-service/       # FastAPI AI code review service
+│   ├── frontend/         # React SPA & Monaco Editor UI (Port 3000)
+│   ├── backend/          # Express API & WebSocket Gateway (Port 4000)
+│   └── ai-service/       # FastAPI AI microservice (Port 8000)
 ├── packages/
-│   └── shared/           # Shared TypeScript contracts and types
-├── docker/
-│   └── docker-compose.yml# PostgreSQL & Redis infrastructure
-└── docs/                 # Architectural & engineering guidelines
+│   └── shared/           # Shared TypeScript interfaces & API contracts
+├── docs/                 # Architectural specifications & engineering design decisions
+│   ├── ARCHITECTURE.md
+│   └── DESIGN_DECISIONS.md
+├── docker-compose.yml    # Root Docker Compose infrastructure
+├── CONTRIBUTING.md       # Contribution guidelines
+└── LICENSE               # MIT License
 ```
 
 ---
@@ -66,52 +99,79 @@ PeerCode/
 
 ### Prerequisites
 
-- Node.js >= 18.x and `npm`
-- Python >= 3.10
-- Docker & Docker Compose
-- [Ollama](https://ollama.ai/) installed locally with `qwen2.5-coder:7b` pulled (`ollama pull qwen2.5-coder:7b`)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Docker Compose V2
+- [Ollama](https://ollama.ai/) installed on host system with `qwen2.5-coder:7b`:
+  ```bash
+  ollama pull qwen2.5-coder:7b
+  ```
 
-### 1. Repository Setup
+### Docker-First Development (Recommended)
 
 ```bash
 git clone https://github.com/Shivang-Mishra-20/PeerCode.git
 cd PeerCode
-npm install
+
+# Launch all 5 microservices in daemon mode
+docker compose up -d
 ```
 
-### 2. Start Infrastructure (PostgreSQL & Redis)
+Verify running services:
+- **Frontend SPA**: [http://localhost:3000](http://localhost:3000)
+- **Backend Health Check**: [http://localhost:4000/health](http://localhost:4000/health)
+- **AI Microservice Health**: [http://localhost:8000/health](http://localhost:8000/health)
+
+### Standalone Native Development (Optional)
+
+If running without Docker, start individual services using workspace scripts:
 
 ```bash
-npm run docker:up
+npm install
+npm run dev:backend   # Starts Express gateway (Port 4000)
+npm run dev:frontend  # Starts Vite SPA (Port 3000)
+npm run dev:ai        # Starts FastAPI microservice (Port 8000)
 ```
 
-### 3. Configure Environment Variables
+---
 
-Copy `.env.example` templates in root, `apps/backend/`, and `apps/ai-service/`:
+## Environment Variables
+
+Default port allocations, database URLs, and service connection strings are defined in the repository environment templates. To customize settings, copy the respective `.env.example` files:
 
 ```bash
 cp .env.example .env
 cp apps/backend/.env.example apps/backend/.env
 cp apps/ai-service/.env.example apps/ai-service/.env
+cp apps/frontend/.env.example apps/frontend/.env
 ```
+
+Refer to [.env.example](.env.example), [apps/backend/.env.example](apps/backend/.env.example), and [apps/ai-service/.env.example](apps/ai-service/.env.example) for all available options.
 
 ---
 
-## Development Commands
+## Roadmap
 
-```bash
-# Run Frontend
-npm run dev:frontend
+- **Completed**:
+  - Lock-free Yjs CRDT document synchronization over WebSockets.
+  - Redis 7 pub/sub state relay and PostgreSQL 16 persistence.
+  - Live SSE streaming AI code review gateway.
+  - Monaco editor markers and tabbed AI review drawer UI.
+  - Containerized environment via Docker Compose V2.
+- **Planned**:
+  - Multi-file project workspace navigation.
+  - Custom static code review rules.
+  - Role-based room access control.
 
-# Run Backend
-npm run dev:backend
-
-# Run AI Service
-npm run dev:ai
-```
+Detailed milestone tracking is available in [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md).
 
 ---
 
-## Future Enhancements
+## Documentation
 
-See [PROJECT_PROGRESS.md](PROJECT_PROGRESS.md) for planned future extensions.
+- [System Architecture Specification](docs/ARCHITECTURE.md): Full component breakdown and sequence diagrams.
+- [Engineering Design Decisions](docs/DESIGN_DECISIONS.md): Technology rationale and trade-off analysis.
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
