@@ -9,13 +9,13 @@ services:
       POSTGRES_PASSWORD: peercode_secret
       POSTGRES_DB: peercode_db
     ports:
-      - "5435:5432"
+      - '5435:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - peercode-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U peercode_user -d peercode_db"]
+      test: ['CMD-SHELL', 'pg_isready -U peercode_user -d peercode_db']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,13 +26,13 @@ services:
     container_name: peercode-redis
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redis_data:/data
     networks:
       - peercode-network
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -47,7 +47,7 @@ services:
     tty: true
     stdin_open: true
     ports:
-      - "4000:4000"
+      - '4000:4000'
     environment:
       NODE_ENV: development
       PORT: 4000
@@ -65,7 +65,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:4000/health || exit 1"]
+      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:4000/health || exit 1']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -79,7 +79,7 @@ services:
     container_name: peercode-ai-service
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - '8000:8000'
     environment:
       ENVIRONMENT: development
       OLLAMA_BASE_URL: http://host.docker.internal:11434
@@ -89,9 +89,9 @@ services:
     networks:
       - peercode-network
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 'host.docker.internal:host-gateway'
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://127.0.0.1:8000/health || exit 1"]
+      test: ['CMD-SHELL', 'curl -f http://127.0.0.1:8000/health || exit 1']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -107,7 +107,7 @@ services:
     tty: true
     stdin_open: true
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       VITE_API_URL: http://localhost:4000
       VITE_WS_URL: ws://localhost:4000
@@ -120,7 +120,7 @@ services:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/ || exit 1"]
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/ || exit 1']
       interval: 5s
       timeout: 5s
       retries: 5

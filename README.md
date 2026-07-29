@@ -22,17 +22,20 @@ It provides private code intelligence by running line-level AI peer reviews loca
 ## Core Features
 
 ### Real-Time Collaboration
+
 - **Yjs CRDT Sync**: Lock-free multi-client editing with eventual consistency.
 - **WebSocket Gateway**: Low-latency event streaming over `y-websocket`.
 - **Live Presence**: Real-time remote cursor tracking and user presence indicators.
 
 ### AI-Powered Code Review
+
 - **Local AI Analysis**: Private, local code reviews via Ollama without data egress.
 - **SSE Token Streaming**: Real-time token streaming directly into an interactive review panel.
 - **Monaco Diagnostics**: Automated editor markers highlighting bugs, code smells, and unused variables.
 - **Explainable Suggestions**: Actionable review tabs (Summary, Issues, Refactor, Metadata).
 
 ### Persistence & Infrastructure
+
 - **PostgreSQL Snapshots**: Background persistence for room states and snapshot history.
 - **Redis Pub/Sub & Caching**: Session state caching and multi-node Pub/Sub broadcasting.
 - **Docker-First Environment**: Single-command containerized setup via Docker Compose V2.
@@ -41,14 +44,14 @@ It provides private code intelligence by running line-level AI peer reviews loca
 
 ## Tech Stack
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 18, TypeScript, Monaco Editor, Tailwind CSS, Vite |
-| **Real-Time Engine** | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`) |
-| **Backend Gateway** | Node.js, Express, TypeScript, Prisma ORM |
-| **Database & Caching** | PostgreSQL 16, Redis 7 |
-| **AI Microservice** | Python 3.11, FastAPI, Pydantic v2, Ollama (`Qwen2.5-Coder:7b`) |
-| **Infrastructure** | Docker Compose V2 |
+| Layer                  | Technologies                                                   |
+| :--------------------- | :------------------------------------------------------------- |
+| **Frontend**           | React 18, TypeScript, Monaco Editor, Tailwind CSS, Vite        |
+| **Real-Time Engine**   | Yjs (CRDT), WebSockets (`y-websocket`, `y-monaco`)             |
+| **Backend Gateway**    | Node.js, Express, TypeScript, Prisma ORM                       |
+| **Database & Caching** | PostgreSQL 16, Redis 7                                         |
+| **AI Microservice**    | Python 3.11, FastAPI, Pydantic v2, Ollama (`Qwen2.5-Coder:7b`) |
+| **Infrastructure**     | Docker Compose V2                                              |
 
 ---
 
@@ -116,6 +119,7 @@ docker compose up -d
 ```
 
 Verify running services:
+
 - **Frontend SPA**: [http://localhost:3000](http://localhost:3000)
 - **Backend Health Check**: [http://localhost:4000/health](http://localhost:4000/health)
 - **AI Microservice Health**: [http://localhost:8000/health](http://localhost:8000/health)

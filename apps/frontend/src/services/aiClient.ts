@@ -146,7 +146,10 @@ export class AIClient {
               } else if (currentEvent === 'error') {
                 stopFlushLoop();
                 if (onError) {
-                  onError({ message: data.message || 'AI analysis error', requestId: data.requestId });
+                  onError({
+                    message: data.message || 'AI analysis error',
+                    requestId: data.requestId,
+                  });
                 }
               }
             } catch {

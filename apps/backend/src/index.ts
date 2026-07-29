@@ -33,14 +33,17 @@ app.get('/health', async (_req: Request, res: Response) => {
     const aiServiceStatus = (await Promise.race([
       fastAPIClient.checkHealth(500).catch(() => aiFallback),
       new Promise((resolve) => setTimeout(() => resolve(aiFallback), 500)),
-    ])) as Record<string, any>;
+    ])) as Record<string, unknown>;
 
     // Core Backend dependencies status
     const postgresStatus = 'healthy';
     const redisStatus = redisMetrics.status === 'connected' ? 'healthy' : 'unhealthy';
-    
+
     // AI Microservice & Ollama external status
-    const aiServiceHealth = aiServiceStatus?.status === 'healthy' || aiServiceStatus?.status === 'unhealthy' ? 'healthy' : 'unavailable';
+    const aiServiceHealth =
+      aiServiceStatus?.status === 'healthy' || aiServiceStatus?.status === 'unhealthy'
+        ? 'healthy'
+        : 'unavailable';
     const ollamaStatus = aiServiceStatus?.available === true ? 'healthy' : 'unavailable';
 
     // Core backend status: Express is running, PostgreSQL & Redis are connected
@@ -79,7 +82,8 @@ app.get('/health', async (_req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorObj = err instanceof Error ? err : new Error(String(err));
     res.status(500).json({
       status: 'unhealthy',
       service: 'peercode-backend',
@@ -89,7 +93,7 @@ app.get('/health', async (_req: Request, res: Response) => {
         ai_service: 'unavailable',
         ollama: 'unavailable',
       },
-      error: err?.message || 'Internal health check failure',
+      error: errorObj.message || 'Internal health check failure',
     });
   }
 });

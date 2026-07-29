@@ -21,15 +21,18 @@ Thank you for your interest in contributing to PeerCode! This document outlines 
 ## Getting Started
 
 1. **Fork and Clone the Repository**:
+
    ```bash
    git clone https://github.com/Shivang-Mishra-20/PeerCode.git
    cd PeerCode
    ```
 
 2. **Launch Development Infrastructure via Docker Compose**:
+
    ```bash
    docker compose up -d
    ```
+
    This automatically provisions PostgreSQL 16, Redis 7, Express API Gateway, FastAPI AI Microservice, and the React SPA Frontend.
 
 3. **Verify Service Health**:
